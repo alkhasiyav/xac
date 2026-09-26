@@ -1,0 +1,539 @@
+<title>Калькулятор xac</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #EEF1F4;
+    --surface: #FFFFFF;
+    --key: #F4F6F8;
+    --key-hover: #E6EBEF;
+    --key-op: #E3EFED;
+    --key-op-hover: #D2E6E2;
+    --text: #16202A;
+    --muted: #5B6875;
+    --line: #D6DCE2;
+    --accent: #0E6B63;
+    --accent-hover: #0B5A53;
+    --accent-text: #FFFFFF;
+    --danger: #B42318;
+    --shadow: 0 1px 2px rgba(22, 32, 42, .06), 0 8px 28px rgba(22, 32, 42, .08);
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F1417;
+      --surface: #182026;
+      --key: #212B32;
+      --key-hover: #2B363E;
+      --key-op: #1D3633;
+      --key-op-hover: #25443F;
+      --text: #E6ECEF;
+      --muted: #93A1AB;
+      --line: #2C373F;
+      --accent: #3FB6A8;
+      --accent-hover: #56C6B8;
+      --accent-text: #06201D;
+      --danger: #F97066;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F1417;
+    --surface: #182026;
+    --key: #212B32;
+    --key-hover: #2B363E;
+    --key-op: #1D3633;
+    --key-op-hover: #25443F;
+    --text: #E6ECEF;
+    --muted: #93A1AB;
+    --line: #2C373F;
+    --accent: #3FB6A8;
+    --accent-hover: #56C6B8;
+    --accent-text: #06201D;
+    --danger: #F97066;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 32px 16px;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 680px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); max-width: 400px; }
+  }
+
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: grid;
+    gap: 16px;
+  }
+  .display {
+    padding: 12px 8px 4px;
+    display: grid;
+    gap: 6px;
+    text-align: right;
+    min-width: 0;
+  }
+  .expr {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    color: var(--muted);
+    min-height: 1.5em;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .expr::-webkit-scrollbar { display: none; }
+  .result {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 2.6rem;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .result::-webkit-scrollbar { display: none; }
+  .result.error { color: var(--danger); font-size: 1.4rem; line-height: 2.99rem; font-family: var(--sans); }
+  .result.pending { color: var(--muted); }
+
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .keys button {
+    font: 500 1.25rem/1 var(--sans);
+    height: 58px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--key);
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color .12s ease, transform .06s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .keys button:hover { background: var(--key-hover); }
+  .keys button:active, .keys button.pressed { transform: scale(.96); }
+  .keys button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .keys .op { background: var(--key-op); color: var(--accent); font-size: 1.4rem; }
+  .keys .op:hover { background: var(--key-op-hover); }
+  .keys .fn { color: var(--muted); font-size: 1.05rem; }
+  .keys .eq {
+    background: var(--accent);
+    color: var(--accent-text);
+    grid-row: span 2;
+    height: auto;
+    font-size: 1.6rem;
+  }
+  .keys .eq:hover { background: var(--accent-hover); }
+  .keys .zero { grid-column: span 2; }
+
+  .tape {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+  .tape-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .tape h2 {
+    margin: 0;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .link {
+    font: 500 .85rem var(--sans);
+    color: var(--accent);
+    background: none;
+    border: 0;
+    padding: 4px;
+    cursor: pointer;
+  }
+  .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .tape ol { list-style: none; margin: 0; padding: 0; display: grid; }
+  .tape li + li { border-top: 1px dashed var(--line); }
+  .tape li button {
+    width: 100%;
+    display: grid;
+    gap: 2px;
+    text-align: right;
+    padding: 10px 6px;
+    background: none;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    cursor: pointer;
+  }
+  .tape li button:hover { background: var(--key); }
+  .tape li button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tape .t-expr { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+  .tape .t-res { font-size: 1.15rem; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .tape .note { margin: 0; font-size: .85rem; color: var(--muted); line-height: 1.5; }
+  .hint { margin: 0; font-size: .85rem; color: var(--muted); line-height: 1.55; }
+  kbd {
+    font-family: var(--mono);
+    font-size: .8em;
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--key);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .keys button { transition: none; }
+    .keys button:active, .keys button.pressed { transform: none; }
+  }
+</style>
+
+<main class="wrap">
+  <section class="calc" aria-label="Калькулятор">
+    <div class="display" aria-live="polite">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="keys" id="keys">
+      <button type="button" class="fn" data-action="clear" aria-label="Очистить">C</button>
+      <button type="button" class="fn" data-action="back" aria-label="Стереть символ">⌫</button>
+      <button type="button" class="op" data-insert="%" aria-label="Остаток от деления">%</button>
+      <button type="button" class="op" data-insert="/" aria-label="Разделить">÷</button>
+
+      <button type="button" class="fn" data-insert="(">(</button>
+      <button type="button" class="fn" data-insert=")">)</button>
+      <button type="button" class="op" data-insert="^" aria-label="Степень">xʸ</button>
+      <button type="button" class="op" data-insert="*" aria-label="Умножить">×</button>
+
+      <button type="button" data-insert="7">7</button>
+      <button type="button" data-insert="8">8</button>
+      <button type="button" data-insert="9">9</button>
+      <button type="button" class="op" data-insert="-" aria-label="Минус">−</button>
+
+      <button type="button" data-insert="4">4</button>
+      <button type="button" data-insert="5">5</button>
+      <button type="button" data-insert="6">6</button>
+      <button type="button" class="op" data-insert="+" aria-label="Плюс">+</button>
+
+      <button type="button" data-insert="1">1</button>
+      <button type="button" data-insert="2">2</button>
+      <button type="button" data-insert="3">3</button>
+      <button type="button" class="eq" data-action="equals" aria-label="Равно">=</button>
+
+      <button type="button" class="zero" data-insert="0">0</button>
+      <button type="button" data-insert="," aria-label="Десятичная запятая">,</button>
+    </div>
+  </section>
+
+  <aside class="tape" aria-label="История">
+    <div class="tape-head">
+      <h2>История</h2>
+      <button type="button" class="link" id="clear-tape">Очистить</button>
+    </div>
+    <p class="note" id="tape-note" hidden>Это примеры. Ваши вычисления появятся здесь.</p>
+    <ol id="tape"></ol>
+    <p class="hint">Нажмите на строку, чтобы подставить результат. С клавиатуры: цифры, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>^</kbd> <kbd>%</kbd>, <kbd>Enter</kbd> — посчитать, <kbd>Esc</kbd> — очистить.</p>
+  </aside>
+</main>
+
+<script>
+(function () {
+  // Те же правила, что и в calc.py: + - * / // % ** (или ^), скобки, десятичная запятая.
+  class CalcError extends Error {}
+
+  function tokenize(src) {
+    const s = src.replace(/,/g, ".").replace(/\^/g, "**");
+    const tokens = [];
+    let i = 0;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === " ") { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        let j = i;
+        while (j < s.length && /[0-9.]/.test(s[j])) j++;
+        const text = s.slice(i, j);
+        if (!/^(\d+\.?\d*|\.\d+)$/.test(text)) throw new CalcError("синтаксическая ошибка");
+        tokens.push({ type: "num", value: parseFloat(text) });
+        i = j;
+        continue;
+      }
+      const two = s.slice(i, i + 2);
+      if (two === "**" || two === "//") { tokens.push({ type: "op", value: two }); i += 2; continue; }
+      if ("+-*/%()".includes(c)) { tokens.push({ type: "op", value: c }); i++; continue; }
+      throw new CalcError("недопустимое выражение");
+    }
+    return tokens;
+  }
+
+  function evaluate(src) {
+    const tokens = tokenize(src);
+    let pos = 0;
+    const peek = () => tokens[pos] && tokens[pos].value;
+    const next = () => tokens[pos++];
+
+    // expr := term (('+'|'-') term)*
+    function expr() {
+      let v = term();
+      while (peek() === "+" || peek() === "-") {
+        const op = next().value;
+        const r = term();
+        v = op === "+" ? v + r : v - r;
+      }
+      return v;
+    }
+    // term := factor (('*'|'/'|'//'|'%') factor)*
+    function term() {
+      let v = factor();
+      while (["*", "/", "//", "%"].includes(peek())) {
+        const op = next().value;
+        const r = factor();
+        if (op === "*") { v = v * r; continue; }
+        if (r === 0) throw new CalcError("деление на ноль");
+        if (op === "/") v = v / r;
+        else if (op === "//") v = Math.floor(v / r);
+        else v = v - r * Math.floor(v / r); // остаток со знаком делителя, как в Python
+      }
+      return v;
+    }
+    // factor := ('+'|'-') factor | power
+    function factor() {
+      if (peek() === "+") { next(); return factor(); }
+      if (peek() === "-") { next(); return -factor(); }
+      return power();
+    }
+    // power := atom ['**' factor]
+    function power() {
+      const base = atom();
+      if (peek() === "**") {
+        next();
+        const exp = factor();
+        if (Math.abs(exp) > 1000) throw new CalcError("слишком большая степень");
+        if (base === 0 && exp < 0) throw new CalcError("деление на ноль");
+        return Math.pow(base, exp);
+      }
+      return base;
+    }
+    function atom() {
+      const t = next();
+      if (!t) throw new CalcError("синтаксическая ошибка");
+      if (t.type === "num") return t.value;
+      if (t.value === "(") {
+        const v = expr();
+        if (peek() !== ")") throw new CalcError("синтаксическая ошибка");
+        next();
+        return v;
+      }
+      throw new CalcError("синтаксическая ошибка");
+    }
+
+    if (!tokens.length) throw new CalcError("синтаксическая ошибка");
+    const v = expr();
+    if (pos !== tokens.length) throw new CalcError("синтаксическая ошибка");
+    if (!Number.isFinite(v)) throw new CalcError("результат слишком большой");
+    return v;
+  }
+
+  function formatNumber(v) {
+    if (Object.is(v, -0)) v = 0;
+    const abs = Math.abs(v);
+    if (abs !== 0 && (abs >= 1e15 || abs < 1e-9)) {
+      return v.toExponential(8).replace(/\.?0+e/, "e").replace(".", ",");
+    }
+    const rounded = parseFloat(v.toPrecision(12));
+    const [intPart, frac] = String(rounded).split(".");
+    const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return frac ? grouped + "," + frac : grouped;
+  }
+
+  function prettyExpr(s) {
+    return s
+      .replace(/\/\//g, "\u0000")
+      .replace(/\*\*/g, "^")
+      .replace(/\*/g, "×")
+      .replace(/\//g, "÷")
+      .replace(/\u0000/g, "//")
+      .replace(/-/g, "−")
+      .replace(/\./g, ",")
+      .replace(/([+\-×÷%^−])/g, " $1 ")
+      .replace(/\s+/g, " ")
+      .replace(/\(\s/g, "(")
+      .replace(/\s\)/g, ")")
+      .trim();
+  }
+
+  const exprEl = document.getElementById("expr");
+  const resultEl = document.getElementById("result");
+  const tapeEl = document.getElementById("tape");
+  const tapeNote = document.getElementById("tape-note");
+
+  const EXAMPLES = [
+    { expr: "2+2*3", result: 8 },
+    { expr: "(10-4)/4", result: 1.5 },
+    { expr: "2^10", result: 1024 },
+  ];
+  const STORE_KEY = "xac-calc-tape";
+
+  let expr = "";
+  let justEvaluated = false;
+  let tape = null;
+
+  function loadTape() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+  function saveTape() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(tape || [])); } catch (e) {}
+  }
+
+  function renderTape() {
+    const items = tape || EXAMPLES;
+    tapeNote.hidden = tape !== null;
+    tapeEl.innerHTML = "";
+    if (!items.length) {
+      const li = document.createElement("li");
+      li.innerHTML = '<p class="note">Пока пусто.</p>';
+      tapeEl.appendChild(li);
+      return;
+    }
+    items.slice(0, 12).forEach((item) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.innerHTML = '<span class="t-expr"></span><span class="t-res"></span>';
+      btn.querySelector(".t-expr").textContent = prettyExpr(item.expr) + " =";
+      btn.querySelector(".t-res").textContent = formatNumber(item.result);
+      btn.addEventListener("click", () => {
+        expr = String(parseFloat(item.result.toPrecision(12)));
+        justEvaluated = true;
+        render();
+      });
+      li.appendChild(btn);
+      tapeEl.appendChild(li);
+    });
+  }
+
+  function render(error) {
+    exprEl.textContent = prettyExpr(expr);
+    resultEl.classList.remove("error", "pending");
+    if (error) {
+      resultEl.textContent = "Ошибка: " + error;
+      resultEl.classList.add("error");
+      return;
+    }
+    if (!expr) { resultEl.textContent = "0"; return; }
+    try {
+      resultEl.textContent = formatNumber(evaluate(expr));
+      if (!justEvaluated) resultEl.classList.add("pending");
+    } catch (e) {
+      // Пока выражение не дописано, оставляем последний результат приглушённым.
+      resultEl.classList.add("pending");
+    }
+    exprEl.scrollLeft = exprEl.scrollWidth;
+  }
+
+  function insert(ch) {
+    const isOp = "+-*/%^".includes(ch);
+    if (justEvaluated && !isOp && ch !== ")") expr = "";
+    justEvaluated = false;
+    if (ch === ",") ch = ".";
+    expr += ch;
+    render();
+  }
+
+  function equals() {
+    if (!expr) return;
+    try {
+      const v = evaluate(expr);
+      tape = [{ expr: expr, result: v }].concat(tape || []).slice(0, 50);
+      saveTape();
+      renderTape();
+      expr = String(parseFloat(v.toPrecision(12)));
+      justEvaluated = true;
+      exprEl.textContent = prettyExpr(tape[0].expr) + " =";
+      resultEl.classList.remove("error", "pending");
+      resultEl.textContent = formatNumber(v);
+    } catch (e) {
+      render(e instanceof CalcError ? e.message : "недопустимое выражение");
+    }
+  }
+
+  function clearAll() { expr = ""; justEvaluated = false; render(); }
+  function back() { justEvaluated = false; expr = expr.slice(0, -1); render(); }
+
+  document.getElementById("keys").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    if (btn.dataset.insert) insert(btn.dataset.insert);
+    else if (btn.dataset.action === "equals") equals();
+    else if (btn.dataset.action === "clear") clearAll();
+    else if (btn.dataset.action === "back") back();
+  });
+
+  document.getElementById("clear-tape").addEventListener("click", () => {
+    tape = [];
+    saveTape();
+    renderTape();
+  });
+
+  const keyMap = { Enter: "equals", "=": "equals", Escape: "clear", Delete: "clear", Backspace: "back" };
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    let target = null;
+    if (/^[0-9]$/.test(e.key) || "+-*/%^().,".includes(e.key)) {
+      insert(e.key);
+      target = document.querySelector('[data-insert="' + (e.key === "." ? "," : e.key) + '"]');
+    } else if (keyMap[e.key]) {
+      const action = keyMap[e.key];
+      if (action === "equals") equals();
+      else if (action === "clear") clearAll();
+      else back();
+      target = document.querySelector('[data-action="' + action + '"]');
+    } else {
+      return;
+    }
+    e.preventDefault();
+    if (target) {
+      target.classList.add("pressed");
+      setTimeout(() => target.classList.remove("pressed"), 90);
+    }
+  });
+
+  tape = loadTape();
+  renderTape();
+  // Стартовое состояние: пример выражения, чтобы сразу было видно, как это работает.
+  expr = "2+2*3";
+  render();
+})();
+</script>
