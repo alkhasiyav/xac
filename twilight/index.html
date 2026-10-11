@@ -154,6 +154,20 @@
   .seg button[aria-pressed="true"] { background: rgba(242, 153, 74, .2); color: #FFD3AA; }
   .seg button:focus-visible, .btn:focus-visible, .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  .vp-event {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    width: max-content; max-width: min(540px, calc(100% - 24px));
+    padding: 11px 15px; border-radius: 10px;
+    background: rgba(10, 14, 32, .92);
+    border: 1px solid rgba(223, 230, 255, .55);
+    box-shadow: 0 0 28px rgba(190, 205, 255, .25);
+    color: var(--space-ink);
+    font: 500 15px/1.4 var(--sans);
+    text-align: center;
+    pointer-events: none;
+  }
+  .vp-event b { color: #fff; }
+  .lbl.glow { color: #f2f5ff; background: rgba(60, 80, 150, .55); border-color: rgba(223, 230, 255, .5); }
   .hud {
     position: absolute; left: 14px; bottom: 14px;
     display: grid; gap: 6px;
@@ -408,6 +422,7 @@
             <button type="button" id="fsBtn" aria-pressed="false" title="Клавиша F"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M1 4.5V1h3.5M8.5 1H12v3.5M12 8.5V12H8.5M4.5 12H1V8.5"/></svg><span>На весь экран</span></button>
           </div>
         </div>
+        <div class="vp-event" id="vpEvent" role="status" hidden></div>
         <div class="hud">
           <div class="clock" id="hudClock">--:--</div>
           <div class="phase" id="hudPhase"><i></i><span>—</span></div>
@@ -872,22 +887,28 @@ function initSky() {
     uniforms: {
       sunAlt: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) },
       cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) },
-      cNight: { value: hex('#0a1030') }, cDay: { value: hex('#5d9be0') }, cDusk: { value: hex('#ff9a55') }
+      cNight: { value: hex('#0a1030') }, cDay: { value: hex('#5d9be0') }, cDusk: { value: hex('#ff9a55') },
+      cFirst: { value: hex('#dfe6ff') }, cBlue: { value: hex('#7d9bf0') }
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `
-      uniform float sunAlt; uniform vec3 sunDir; uniform vec3 cCivil, cNaut, cAstro, cNight, cDay, cDusk;
+      uniform float sunAlt; uniform vec3 sunDir; uniform vec3 cCivil, cNaut, cAstro, cNight, cDay, cDusk, cFirst, cBlue;
       varying vec3 vP;
       void main(){
         vec3 p = normalize(vP); float a = degrees(asin(clamp(p.y,-1.0,1.0)));
         vec4 col;
         if (a >= 0.0) {
           float day = smoothstep(-4.0, 8.0, sunAlt);
-          float tw = smoothstep(-19.0, -1.0, sunAlt) * (1.0 - day);
-          float near = pow(max(dot(normalize(vec3(p.x,0.0,p.z)), normalize(vec3(sunDir.x,0.0,sunDir.z))),0.0), 4.0);
-          vec3 c = mix(cNight, cDay, day);
-          c += cDusk * tw * (0.15 + near * 0.9) * exp(-a / 14.0);
-          col = vec4(c, 0.10 + 0.30 * day + 0.25 * tw * exp(-a/14.0));
+          // twilight glow: none while the sun is deeper than 18°, a faint band from −18°, growing as it rises
+          float on = smoothstep(-18.25, -17.75, sunAlt);
+          float tw = clamp((sunAlt + 18.0) / 18.0, 0.0, 1.0);
+          float g = on * (0.5 + 0.5 * tw) * (1.0 - day);
+          float hz = max(dot(normalize(vec3(p.x,0.0,p.z)), normalize(vec3(sunDir.x,0.0,sunDir.z) + vec3(1e-5))), 0.0);
+          float near = pow(hz, mix(9.0, 2.5, tw)) * exp(-a / mix(5.0, 18.0, tw));
+          vec3 ct = tw < 0.5 ? mix(cFirst, cBlue, tw * 2.0) : mix(cBlue, cDusk, tw * 2.0 - 1.0);
+          float k = clamp(g * near * 1.6, 0.0, 1.0);
+          vec3 c = mix(mix(cNight, cDay, day), ct, k);
+          col = vec4(c, 0.10 + 0.30 * day + 0.85 * k);
         } else if (a > -6.0)  col = vec4(cCivil, 0.30);
         else if (a > -12.0)   col = vec4(cNaut, 0.30);
         else if (a > -18.0)   col = vec4(cAstro, 0.36);
@@ -927,6 +948,8 @@ function initSky() {
   sky.sun = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
   sky.glow = glowSprite('rgba(255,190,90,.6)', 3.2); sky.sun.add(sky.glow); sc.add(sky.sun);
   sky.sunLbl = addLabel('Солнце', '', 'sky', v => v.copy(sky.sun.position));
+  sky.glowPos = new THREE.Vector3(); sky.glowOn = false;
+  sky.glowLbl = addLabel('', 'glow', 'sky', v => v.copy(sky.glowPos), () => sky.glowOn);
 
   sky.pathGroup = new THREE.Group(); sc.add(sky.pathGroup);
   sky.prayerMarkers = new THREE.Group(); sc.add(sky.prayerMarkers);
@@ -967,6 +990,8 @@ function rebuildSkyPath() {
   const P = prayerTimes();
   for (const L of sky.prayerLabels) {
     const p = P.find(x => x.id === L.id); L.ok = isFinite(p.t);
+    if (L.id === 'fajr') L.el.textContent = 'Фаджр · −' + String(S.fajrA).replace('.', ',') + '°';
+    if (L.id === 'isha') L.el.textContent = 'Иша · −' + String(S.ishaA).replace('.', ',') + '°';
     if (!L.ok) continue;
     const v = sunVec(S.lat, d, (p.t - 12) * 15 * D2R); L.pos.set(v[0] * R, v[1] * R, v[2] * R);
     const m = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1df }));
@@ -1029,11 +1054,11 @@ function initEarth() {
   // parallel ring
   earth.ringHolder = new THREE.Group(); earth.tilt.add(earth.ringHolder);
   // band boundary circles (world, around sun axis)
-  const names = { 0: '0°', '-6': '−6°', '-12': '−12°', '-18': '−18°' }, tilt = { 0: 8, '-6': 16, '-12': 24, '-18': 32 };
+  const names = { 0: '0°', '-6': '−6°', '-12': '−12°', '-18': '−18°: граница сумерек' }, tilt = { 0: 8, '-6': 16, '-12': 24, '-18': 32 };
   for (const h of [0, -6, -12, -18]) {
     const pts = []; const rr = ER * 1.006;
     for (let i = 0; i <= 160; i++) { const a = i / 160 * Math.PI * 2; pts.push(new THREE.Vector3(rr * sin(h * D2R), rr * cos(h * D2R) * cos(a), rr * cos(h * D2R) * sin(a))); }
-    sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: h === 0 ? .5 : .28 })));
+    sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: h === -18 ? 0xdfe6ff : 0xffffff, transparent: true, opacity: h === 0 ? .5 : h === -18 ? .95 : .28 })));
     const a = tilt[h] * D2R; addLabel(names[h], 'plain', 'earth', v => v.set(rr * sin(h * D2R), -rr * cos(h * D2R) * sin(a), rr * cos(h * D2R) * cos(a)).multiplyScalar(1.04), () => S.cam !== 'follow');
   }
   // sunlight arrows
@@ -1200,6 +1225,11 @@ function updateTime3D() {
   sky.domeMat.uniforms.sunAlt.value = alt;
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
   sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
+  const hzn = Math.hypot(v[0], v[2]) || 1;
+  sky.glowPos.set(v[0] / hzn * R * .97, .5, v[2] / hzn * R * .97);
+  const morning = (((t % 24) + 24) % 24) < 12;
+  sky.glowOn = alt > -18 && alt < -0.83;
+  sky.glowLbl.el.textContent = alt < -12 ? (morning ? 'первая заря (с −18°)' : 'последние сумерки (до −18°)') : (morning ? 'утренняя заря' : 'вечерние сумерки');
   earth.mesh.rotation.y = H;
 }
 
@@ -1699,6 +1729,9 @@ $('shToAsr').addEventListener('click', () => { const a = shAsr(1); if (isFinite(
 const STEPS = [
   { title: 'Что такое сумерки', set: { city: 'kazan', N: 172, T: 21.6, view: 'sky', cam: 'overview' },
     text: () => 'Солнце уже зашло, но ещё освещает воздух высоко над нами. Воздух рассеивает этот свет, и небо светится. Чем глубже Солнце под горизонтом, тем слабее свечение. Под горизонтом нарисованы три цветных слоя по 6°: гражданские, навигационные и астрономические сумерки. Ниже −18° свет Солнца до неба уже не доходит, наступает настоящая ночь. Модель можно вращать мышью или пальцем.' },
+  { title: 'Момент −18°: появляются первые сумерки', set: { city: 'makkah', N: 80, T: 4.35, view: 'sky', cam: 'eye', play: true, speed: .25 },
+    text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. Как только Солнце поднялось до −18°, над горизонтом появляется первая слабая светлая полоса: это истинная заря, начало времени фаджра. Около этого момента время в модели замедляется. Вечером всё наоборот: когда Солнце опускается ниже −18°, гаснут последние сумерки и наступает время иша.',
+    action: { label: 'Показать вечер (иша)', run: () => { S.T = ((toClock(19.0) % 24) + 24) % 24; S.prevAlt = null; setPlaying(true); setView('sky', 'eye'); const v = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R); eye.yaw = Math.atan2(v[0], -v[2]); onTime(); } } },
   { title: 'Мекка: Солнце уходит почти отвесно', set: { city: 'makkah', N: 80, T: 18.2, view: 'sky', cam: 'side', play: true, speed: .5 },
     text: () => { const d = decl(80); return `Вид сбоку. В Мекке путь Солнца наклонён к горизонту под углом около ${Math.round(Math.acos(sin(21.42 * D2R) / cos(d * D2R)) * R2D)}°. Солнце быстро проходит все три слоя и опускается до −18° за ${fmtDur(hoursFor(21.42, d, -18) - hoursFor(21.42, d, DEPTH.sunrise))}. Отсюда привычные «полтора часа» между магрибом и иша.`; } },
   { title: 'Казань, март: путь идёт наискось', set: { city: 'kazan', N: 80, T: 18.6, view: 'sky', cam: 'side', play: true, speed: .5 },
@@ -1733,7 +1766,8 @@ function goStep(i, initial) {
   S.city = st.city; S.lat = city().lat; S.N = st.N;
   els.city.value = S.city;
   onPlace();
-  S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24;
+  S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24; S.prevAlt = null;
+  $('vpEvent').hidden = true;
   if (st.speed) { S.speed = st.speed; els.speed.value = String(st.speed); }
   setPlaying(!!st.play && !initial && !reduceMotion);
   setView(st.view, st.cam, initial);
@@ -1751,9 +1785,24 @@ function onPlace() {
   updatePanelStatic();
   if (has3D) { rebuildSkyPath(); rebuildEarthRing(); }
   drawRace(); drawYear(); updateLp(); shReset(); drawShadow();
+  S.prevAlt = null;
   onTime();
 }
-function onTime() { updateTime3D(); updatePanelTime(); }
+let evTimer = null;
+function showEvent(rising) {
+  const el = $('vpEvent');
+  el.innerHTML = rising
+    ? '<b>Солнце поднялось до −18°.</b> Над горизонтом появилась первая слабая заря. Начинается время фаджра.'
+    : '<b>Солнце опустилось ниже −18°.</b> Последние сумерки исчезли, небо стало по‑ночному тёмным. Наступает время иша.';
+  el.hidden = false;
+  clearTimeout(evTimer); evTimer = setTimeout(() => { el.hidden = true; }, 6500);
+}
+function onTime() {
+  const alt = altAt(S.lat, dec(), toSolar(S.T));
+  if (S.prevAlt != null && (S.prevAlt + 18) * (alt + 18) < 0 && Math.abs(alt - S.prevAlt) < 3) showEvent(alt > S.prevAlt);
+  S.prevAlt = alt;
+  updateTime3D(); updatePanelTime();
+}
 function setPlaying(p) { S.playing = p; els.play.textContent = p ? '❚❚ Пауза' : '▶ Пустить время'; }
 
 els.city.addEventListener('change', () => { S.city = els.city.value; const c = city(); if (c.lat != null) S.lat = c.lat; onPlace(); });
@@ -1788,7 +1837,10 @@ $('lpPlay').addEventListener('click', () => {
 let last = performance.now(), lpAcc = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now;
-  if (S.playing) { S.T = (S.T + dt * S.speed + 24) % 24; onTime(); }
+  if (S.playing) {
+    const near18 = Math.abs(altAt(S.lat, dec(), toSolar(S.T)) + 18) < 1.2;   // slow down so the −18° moment is seen
+    S.T = (S.T + dt * (near18 ? Math.min(S.speed, .2) : S.speed) + 24) % 24; onTime();
+  }
   if (SH.playing) {
     const r = shRange();
     if (!r) SH.playing = false;
