@@ -186,6 +186,8 @@
   .phase i { width: 10px; height: 10px; border-radius: 50%; }
   /* Fullscreen: the studio (scene, story, panel) fills the screen */
   .fs-only, .fs-narrow { display: none; }
+  .studio:not(.is-full) .fs-only, .studio:not(.is-full) .fs-narrow { display: none !important; }
+  @media (min-width: 1040px) { .fs-narrow { display: none !important; } }
   .studio.is-full {
     position: fixed; inset: 0; z-index: 1000;
     background: var(--bg);
@@ -305,6 +307,8 @@
   }
   input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
   .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tsteps { gap: 4px; }
+  .tsteps .btn { padding: 6px 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
   .check input { accent-color: var(--accent); width: 16px; height: 16px; }
 
@@ -456,8 +460,8 @@
         <select id="city"></select>
       </div>
       <div class="field">
-        <div class="field-head"><label for="lat">Широта</label><output id="latOut" for="lat">55,8° с. ш.</output></div>
-        <input type="range" id="lat" min="0" max="70" step="0.1" value="55.8">
+        <div class="field-head"><label for="lat">Широта</label><output id="latOut" for="lat">43,3° с. ш.</output></div>
+        <input type="range" id="lat" min="0" max="70" step="0.1" value="43.25">
       </div>
       <div class="field">
         <div class="field-head"><label for="day">Дата</label><output id="dayOut" for="day">—</output></div>
@@ -475,11 +479,22 @@
         <div class="row">
           <button type="button" class="btn small primary" id="play">▶ Пустить время</button>
           <select id="speed" aria-label="Скорость" style="width:auto">
+            <option value="0.016667">1 мин/с</option>
+            <option value="0.083333">5 мин/с</option>
+            <option value="0.166667">10 мин/с</option>
             <option value="0.25">15 мин/с</option>
             <option value="0.5">30 мин/с</option>
             <option value="1" selected>1 ч/с</option>
             <option value="2">2 ч/с</option>
           </select>
+        </div>
+        <div class="row tsteps" role="group" aria-label="Сдвинуть время">
+          <button type="button" class="btn small step-t" data-tstep="-10">−10 мин</button>
+          <button type="button" class="btn small step-t" data-tstep="-5">−5 мин</button>
+          <button type="button" class="btn small step-t" data-tstep="-1">−1 мин</button>
+          <button type="button" class="btn small step-t" data-tstep="1">+1 мин</button>
+          <button type="button" class="btn small step-t" data-tstep="5">+5 мин</button>
+          <button type="button" class="btn small step-t" data-tstep="10">+10 мин</button>
         </div>
       </div>
       <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
@@ -684,6 +699,14 @@
           <button type="button" class="btn primary" id="shPlay">▶ Провести день</button>
           <button type="button" class="btn" id="shToAsr">К асру</button>
         </div>
+        <div class="row tsteps" role="group" aria-label="Сдвинуть время" style="grid-column: 1 / -1">
+          <button type="button" class="btn small step-t" data-shstep="-10">−10 мин</button>
+          <button type="button" class="btn small step-t" data-shstep="-5">−5 мин</button>
+          <button type="button" class="btn small step-t" data-shstep="-1">−1 мин</button>
+          <button type="button" class="btn small step-t" data-shstep="1">+1 мин</button>
+          <button type="button" class="btn small step-t" data-shstep="5">+5 мин</button>
+          <button type="button" class="btn small step-t" data-shstep="10">+10 мин</button>
+        </div>
       </div>
       <div class="sh-views">
         <div class="sh-view">
@@ -767,6 +790,7 @@ const CITIES = [
   { id: 'equator', name: 'Экватор (условная точка)', lat: 0 },
   { id: 'makkah', name: 'Мекка', lat: 21.42, lon: 39.83, tz: 3 },
   { id: 'makhachkala', name: 'Махачкала', lat: 42.98, lon: 47.5, tz: 3 },
+  { id: 'khasavyurt', name: 'Хасавюрт', lat: 43.25, lon: 46.59, tz: 3 },
   { id: 'grozny', name: 'Грозный', lat: 43.32, lon: 45.69, tz: 3 },
   { id: 'ufa', name: 'Уфа', lat: 54.74, lon: 55.97, tz: 5 },
   { id: 'moscow', name: 'Москва', lat: 55.76, lon: 37.62, tz: 3 },
@@ -795,7 +819,7 @@ function fmtDur(hours) {
 
 /* ================= State ================= */
 const S = {
-  city: 'kazan', lat: 55.79, N: 172, T: 23.0, view: 'sky', cam: 'overview',
+  city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
   playing: false, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
   bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0
 };
@@ -1893,11 +1917,15 @@ $('shPlay').addEventListener('click', () => {
   if (SH.playing && SH.T >= r[1] - .05) SH.T = r[0];
   $('shPlay').textContent = SH.playing ? '❚❚ Пауза' : '▶ Провести день';
 });
+document.querySelectorAll('[data-shstep]').forEach(b => b.addEventListener('click', () => {
+  const r = shRange(); if (!r) return;
+  SH.T = Math.max(r[0], Math.min(r[1], SH.T + +b.dataset.shstep / 60)); SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow();
+}));
 $('shToAsr').addEventListener('click', () => { const a = shAsr(1); if (isFinite(a)) { SH.T = toClock(a); SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow(); } });
 
 /* ================= Story ================= */
 const STEPS = [
-  { title: 'Что такое сумерки', set: { city: 'kazan', N: 172, T: 21.6, view: 'sky', cam: 'overview' },
+  { title: 'Что такое сумерки', set: { city: 'khasavyurt', N: 172, T: 20.4, view: 'sky', cam: 'overview' },
     text: () => 'Солнце уже зашло, но ещё освещает воздух высоко над нами. Воздух рассеивает этот свет, и небо светится. Чем глубже Солнце под горизонтом, тем слабее свечение. Под горизонтом нарисованы три цветных слоя по 6°: гражданские, навигационные и астрономические сумерки. Ниже −18° свет Солнца до неба уже не доходит, наступает настоящая ночь. Модель можно вращать мышью или пальцем.' },
   { title: 'Момент −18°: появляются первые сумерки', set: { city: 'makkah', N: 80, T: 4.35, view: 'sky', cam: 'eye', play: true, speed: .25 },
     text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. С −18° начинается истинная заря и время фаджра. Сначала свечение у горизонта едва уловимо, его можно разглядеть только в тёмном месте. С каждым градусом подъёма Солнца оно становится примерно в 2,5 раза ярче: к −15° уже заметна бледная полоса, к −12° заря видна хорошо. Около −18° время в модели замедляется. Вечером всё в обратном порядке: свечение слабеет и при −18° исчезает совсем, наступает время иша. Если смотрите на проекторе, включите в настройках «Усилить слабое свечение».',
@@ -1982,6 +2010,7 @@ els.day.addEventListener('input', () => { S.N = +els.day.value; onPlace(); });
 document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { S.N = +b.dataset.day; onPlace(); }));
 els.time.addEventListener('input', () => { S.T = +els.time.value; onTime(); });
 els.play.addEventListener('click', () => setPlaying(!S.playing));
+document.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => { S.T = (S.T + +b.dataset.tstep / 60 + 24) % 24; onTime(); }));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
 $('boost').addEventListener('change', e => { if (has3D) sky.domeMat.uniforms.gain.value = e.target.checked ? 2.5 : 0; });
