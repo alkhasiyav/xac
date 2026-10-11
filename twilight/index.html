@@ -359,6 +359,15 @@
   .card .crit { font: 500 13px/1.3 var(--mono); color: var(--muted); }
   .card p { font-size: 14.5px; }
 
+  .sh-controls { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: end; }
+  @media (min-width: 760px) { .sh-controls { grid-template-columns: minmax(0, 1fr) auto; } }
+  .sh-views { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 860px) { .sh-views { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); } }
+  .sh-view { display: grid; gap: 8px; min-width: 0; }
+  .sh-view canvas { border-radius: 10px; }
+  .sh-view .cap { font-size: 13.5px; color: var(--muted); }
+  .verdict .v.state { font-family: var(--sans); font-size: 17px; }
+
   .notes { display: grid; gap: 10px; max-width: 72ch; font-size: 14px; color: var(--muted); }
   .notes li { margin-bottom: 6px; }
   ol.methods { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 70ch; }
@@ -601,7 +610,7 @@
       <article class="card">
         <div class="top"><h3>Аср</h3><span class="ar" lang="ar">العصر</span></div>
         <div class="crit">тень = предмет + полуденная тень</div>
-        <p>Когда тень предмета стала равна его высоте плюс длина полуденной тени. У ханафитов нужна двойная высота. В модели неба рядом с человеком стоит шест и видна его тень.</p>
+        <p>Когда тень предмета стала равна его высоте плюс длина полуденной тени. У ханафитов нужна двойная высота. Ниже есть отдельная анимация с шестом и его тенью.</p>
       </article>
       <article class="card">
         <div class="top"><h3>Магриб</h3><span class="ar" lang="ar">المغرب</span></div>
@@ -613,6 +622,40 @@
         <div class="crit">сумерки исчезли: ≈ 15–18°</div>
         <p>По мнению большинства учёных, после исчезновения красной зари (шафак). У Абу Ханифы — после исчезновения белого свечения, которое гаснет позже, около −18°. Если Солнце так глубоко не опускается, признак не наступает.</p>
       </article>
+    </div>
+  </section>
+
+  <section class="sect" id="shadow">
+    <div class="sect-head">
+      <div class="eyebrow">Зухр и аср по тени</div>
+      <h2>Как тень шеста показывает время зухра и асра</h2>
+      <div class="prose">
+        <p>Поставьте прямой шест на ровную землю. Утром тень длинная и укорачивается. В полдень Солнце стоит выше всего, точно на юге, и тень самая короткая. Как только тень начала удлиняться, наступил зухр.</p>
+        <p>Аср наступает, когда тень стала равна высоте шеста плюс полуденная тень. У ханафитов — двум высотам шеста плюс полуденная тень. Полуденную тень прибавляют потому, что зимой и на севере она сама бывает длиннее шеста. Поменяйте дату в модели выше и сравните лето с зимой.</p>
+      </div>
+    </div>
+    <div class="fig">
+      <div class="sh-controls">
+        <div class="field">
+          <div class="field-head"><label for="shTime">Время · <span id="shPlace">—</span></label><output id="shTimeOut">—</output></div>
+          <input type="range" id="shTime" min="6" max="18" step="0.01" value="15">
+        </div>
+        <div class="row">
+          <button type="button" class="btn primary" id="shPlay">▶ Провести день</button>
+          <button type="button" class="btn" id="shToAsr">К асру</button>
+        </div>
+      </div>
+      <div class="sh-views">
+        <div class="sh-view">
+          <canvas class="chart" id="shSide" height="300" aria-label="Шест и его тень, вид сбоку"></canvas>
+          <div class="cap">Вид сбоку: шест, луч Солнца и тень. Отметки на земле: полуденная тень, аср и аср у ханафитов. Полоска между первыми двумя отметками равна высоте шеста.</div>
+        </div>
+        <div class="sh-view">
+          <canvas class="chart" id="shTop" height="300" aria-label="Путь конца тени, вид сверху"></canvas>
+          <div class="cap">Вид сверху: линия — путь конца тени за день. Аср наступает, когда конец тени после полудня выходит на окружность.</div>
+        </div>
+      </div>
+      <div class="verdict" id="shVerdict"></div>
     </div>
   </section>
 
@@ -874,12 +917,6 @@ function initSky() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(.12, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd7dcf0 }));
   head.position.y = .82; obs.add(head);
   sc.add(obs);
-  const stick = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, 1, 8), new THREE.MeshBasicMaterial({ color: 0xffd9a8 }));
-  stick.position.set(.9, .5, .4); sc.add(stick);
-  sky.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, .07), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .75, side: THREE.DoubleSide }));
-  sky.shadow.rotation.x = -Math.PI / 2; sky.shadow.position.y = .015; sc.add(sky.shadow);
-  sky.stickBase = new THREE.Vector3(.9, 0, .4);
-  addLabel('шест 1 м', 'plain', 'sky', v => v.set(.9, 1.15, .4), () => S.cam === 'close');
 
   // celestial pole axis
   sky.axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]), new THREE.LineDashedMaterial({ color: 0x9fb0ff, dashSize: .35, gapSize: .25, transparent: true, opacity: .7 }));
@@ -1035,8 +1072,7 @@ const CAMS = {
     { id: 'overview', name: 'Общий вид' },
     { id: 'side', name: 'Сбоку' },
     { id: 'top', name: 'Сверху' },
-    { id: 'eye', name: 'Глазами человека' },
-    { id: 'close', name: 'Тень шеста' }
+    { id: 'eye', name: 'Глазами человека' }
   ],
   earth: [
     { id: 'terminator', name: 'Граница дня и ночи' },
@@ -1051,7 +1087,6 @@ function camPose(id) {
     case 'overview': return { pos: [16, 9.5, 17], target: [0, -1.2, 0], fov: 45 };
     case 'side': return { pos: [62, 0, 0], target: [0, -1.5, 0], fov: 25 };
     case 'top': return { pos: [0, 30, .01], target: [0, 0, 0], fov: 45 };
-    case 'close': return { pos: [3.8, 2.6, 4.2], target: [.6, .3, .3], fov: 45 };
     case 'eye': return { pos: [0, .9, 0], target: null, fov: 70 };
     case 'terminator': return { pos: [-4, 11, 16], target: [0, 0, 0], fov: 40 };
     case 'pole': { const d = dec() * D2R; return { pos: [sin(d) * 22, cos(d) * 22, .01], target: [0, 0, 0], fov: 40 }; }
@@ -1164,13 +1199,6 @@ function updateTime3D() {
   sky.sun.position.set(v[0] * R, v[1] * R, v[2] * R);
   sky.domeMat.uniforms.sunAlt.value = alt;
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
-  if (alt > 0.5) {
-    const len = Math.min(6, 1 / Math.tan(alt * D2R));
-    const dir = new THREE.Vector3(-v[0], 0, -v[2]).normalize();
-    sky.shadow.visible = true; sky.shadow.scale.x = len;
-    sky.shadow.position.copy(sky.stickBase).addScaledVector(dir, len / 2); sky.shadow.position.y = .015;
-    sky.shadow.rotation.set(-Math.PI / 2, 0, Math.atan2(dir.z, dir.x));
-  } else sky.shadow.visible = false;
   sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
   earth.mesh.rotation.y = H;
 }
@@ -1502,6 +1530,171 @@ function updateLp() {
   $('verdict').innerHTML = cells.map(([k, v, warn]) => `<div><span class="k">${k}</span><span class="v${warn ? ' warn' : ''}">${v}</span></div>`).join('');
 }
 
+/* ================= Shadow (zuhr & asr) ================= */
+const SH = { T: 15, playing: false };
+function shRange() {
+  const d = dec(), hr = hoursFor(S.lat, d, DEPTH.sunrise);
+  if (isNaN(hr)) return altAt(S.lat, d, 0) > 0 ? [toClock(0), toClock(23.99)] : null;
+  return [toClock(12 - hr), toClock(12 + hr)];
+}
+function shAsr(k) { const d = dec(), h = hoursFor(S.lat, d, asrAlt(S.lat, d, k)); return isNaN(h) ? NaN : 12 + h; }
+function shReset() {
+  const r = shRange(), el = $('shTime');
+  if (!r) return;
+  el.min = r[0]; el.max = r[1];
+  const a = shAsr(1);
+  SH.T = Math.max(r[0], Math.min(r[1], isFinite(a) ? toClock(a) - 1 : toClock(12)));
+}
+const shTip = t => { const v = sunVec(S.lat, dec(), (t - 12) * 15 * D2R); return v[1] > 0.004 ? { x: -v[0] / v[1], y: -v[2] / v[1], alt: Math.asin(v[1]) * R2D, v } : null; };
+const fmtX = x => x.toFixed(1).replace('.', ',') + '×';
+const DAYC = { skyTop: '#3f7fc4', skyLow: '#bfe0f5', dusk: '#f2b37e', ground: '#cdb68a', groundEdge: '#a68c5c', topGround: '#ddcca5', ink: '#1d2333', stick: '#5e3f22', shadow: 'rgba(28,24,20,.8)', asr: '#b4520e', hanafi: '#6e2f8a', noon: '#4d5b2a' };
+
+function drawShadow() {
+  const r = shRange(), c = city();
+  $('shPlace').textContent = ((c && c.lat != null && c.id !== 'custom') ? c.name : 'широта ' + fmtDeg(S.lat)) + ', ' + dateLabel(S.N);
+  const side = $('shSide'), top = $('shTop');
+  if (!r) {
+    for (const cv of [side, top]) { const { x, w, h } = prepCanvas(cv); x.fillStyle = '#10162e'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8eaf4'; x.textAlign = 'center'; x.font = '14px ' + getComputedStyle(document.body).fontFamily; x.fillText('Полярная ночь: Солнце не восходит, тени нет', w / 2, h / 2); }
+    $('shVerdict').innerHTML = ''; $('shTimeOut').textContent = '—'; return;
+  }
+  $('shTime').value = SH.T; $('shTimeOut').textContent = fmtHM(SH.T);
+  const t = toSolar(SH.T), tip = shTip(t), noon = shTip(12);
+  const L = tip ? Math.hypot(tip.x, tip.y) : Infinity;
+  const L0 = noon ? Math.hypot(noon.x, noon.y) : Infinity;
+  const a1 = shAsr(1), a2 = shAsr(2);
+  drawShSide(side, tip, L, L0, t);
+  drawShTop(top, tip, L0, a1, a2, r);
+  let state;
+  if (!tip) state = 'Солнце за горизонтом';
+  else if (t < 12) state = 'До полудня: тень укорачивается';
+  else if (L < L0 + 1) state = 'Время зухра: тень растёт';
+  else if (L < L0 + 2) state = 'Наступил аср';
+  else state = 'Аср и по ханафитскому мазхабу';
+  const cells = [
+    ['Сейчас', state, 'state'],
+    ['Высота Солнца', tip ? fmtDeg(tip.alt) : '—'],
+    ['Тень сейчас', tip ? fmtX(L) + ' шеста' : '—'],
+    ['Тень в полдень', isFinite(L0) ? fmtX(L0) + ' шеста' : '—'],
+    ['Зухр (полдень)', fmtHM(toClock(12))],
+    ['Аср: тень = полдень + 1', fmtHM(toClock(a1)), 'warn'],
+    ['Аср у ханафитов: полдень + 2', fmtHM(toClock(a2))]
+  ];
+  $('shVerdict').innerHTML = cells.map(([k, v, cls]) => `<div><span class="k">${k}</span><span class="v${cls ? ' ' + (cls === 'state' ? 'state warn' : cls) : ''}">${v}</span></div>`).join('');
+}
+
+function mixHex(a, b, k) {
+  const pa = [1, 3, 5].map(i => parseInt(a.substr(i, 2), 16)), pb = [1, 3, 5].map(i => parseInt(b.substr(i, 2), 16));
+  return 'rgb(' + pa.map((v, i) => Math.round(v + (pb[i] - v) * k)).join(',') + ')';
+}
+function drawShSide(cv, tip, L, L0, t) {
+  const { x, w, h } = prepCanvas(cv);
+  const font = getComputedStyle(document.body).fontFamily;
+  const alt = tip ? tip.alt : -5, gy = h * .72;
+  const warm = Math.max(0, Math.min(1, 1 - alt / 22));
+  const g = x.createLinearGradient(0, 0, 0, gy);
+  g.addColorStop(0, tip ? mixHex(DAYC.skyTop, '#2c4b80', warm * .5) : '#10162e');
+  g.addColorStop(1, tip ? mixHex(DAYC.skyLow, DAYC.dusk, warm) : '#2a3260');
+  x.fillStyle = g; x.fillRect(0, 0, w, gy);
+  x.fillStyle = DAYC.ground; x.fillRect(0, gy, w, h - gy);
+  x.fillStyle = DAYC.groundEdge; x.fillRect(0, gy, w, 2);
+  const x0 = w * .3;
+  const span = Math.max(isFinite(L0) ? L0 + 2.5 : 3, 3);
+  const Hs = Math.max(18, Math.min(gy - 34, (w - x0 - 22) / span));
+  const top = [x0, gy - Hs];
+  // ground marks
+  x.font = '600 11px ' + font; x.textAlign = 'center';
+  const marks = [[L0, 'полдень', DAYC.noon], [L0 + 1, 'аср', DAYC.asr], [L0 + 2, 'аср (ханафиты)', DAYC.hanafi]];
+  marks.forEach(([len, lab, col], i) => {
+    const X = x0 + len * Hs; if (!isFinite(X) || X > w - 4) return;
+    x.strokeStyle = col; x.lineWidth = 2; x.beginPath(); x.moveTo(X, gy - 8); x.lineTo(X, gy + 10); x.stroke();
+    x.fillStyle = col; x.fillText(lab, Math.min(w - 40, X), gy + 24 + i * 15);
+  });
+  // "+1 шест" ruler between noon and asr marks
+  if (isFinite(L0) && x0 + (L0 + 1) * Hs < w) {
+    const Xa = x0 + L0 * Hs, Xb = x0 + (L0 + 1) * Hs;
+    x.strokeStyle = DAYC.stick; x.globalAlpha = .5; x.lineWidth = 4; x.beginPath(); x.moveTo(Xa, gy - 9); x.lineTo(Xb, gy - 9); x.stroke(); x.globalAlpha = 1;
+  }
+  if (tip) {
+    const a = alt * D2R, tipX = x0 + L * Hs, over = tipX > w - 6, tx = Math.min(w - 6, tipX);
+    // sun ray through the top of the stick
+    const dx = -Math.cos(a), dy = -Math.sin(a);
+    const k = Math.min(dx < 0 ? (top[0] - 18) / -dx : 1e9, dy < 0 ? (top[1] - 18) / -dy : 1e9);
+    const sx = top[0] + dx * k, sy = top[1] + dy * k;
+    const sg = x.createRadialGradient(sx, sy, 0, sx, sy, 30); sg.addColorStop(0, 'rgba(255,240,180,1)'); sg.addColorStop(.35, 'rgba(255,210,110,.9)'); sg.addColorStop(1, 'rgba(255,200,100,0)');
+    x.fillStyle = sg; x.beginPath(); x.arc(sx, sy, 30, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(255,214,120,.95)'; x.lineWidth = 1.5; x.setLineDash([6, 4]);
+    x.beginPath(); x.moveTo(sx, sy); x.lineTo(tipX, gy); x.stroke(); x.setLineDash([]);
+    // shadow
+    x.strokeStyle = DAYC.shadow; x.lineWidth = 7; x.lineCap = 'round'; x.beginPath(); x.moveTo(x0, gy); x.lineTo(tx, gy); x.stroke(); x.lineCap = 'butt';
+    if (over) { x.fillStyle = DAYC.ink; x.beginPath(); x.moveTo(w - 4, gy); x.lineTo(w - 14, gy - 6); x.lineTo(w - 14, gy + 6); x.fill(); }
+    // angle at the shadow tip
+    if (!over) {
+      x.strokeStyle = DAYC.ink; x.lineWidth = 1.2; x.beginPath(); x.arc(tipX, gy, 26, -Math.PI, -Math.PI + a); x.stroke();
+      x.fillStyle = DAYC.ink; x.font = '600 12px ' + font; x.textAlign = 'right'; x.fillText(fmtDeg(alt, 0), tipX - 30, gy - 22);
+    }
+    x.fillStyle = DAYC.ink; x.font = '600 13px ' + font; x.textAlign = 'center';
+    x.fillText('тень = ' + fmtX(L) + ' шеста', Math.max(x0 + 60, Math.min(w - 70, (x0 + tx) / 2)), gy - 40);
+  } else {
+    x.fillStyle = '#e8eaf4'; x.font = '13px ' + font; x.textAlign = 'center'; x.fillText('Солнце за горизонтом', w / 2, gy / 2);
+  }
+  // stick
+  x.strokeStyle = DAYC.stick; x.lineWidth = 5; x.lineCap = 'round'; x.beginPath(); x.moveTo(x0, gy); x.lineTo(top[0], top[1]); x.stroke(); x.lineCap = 'butt';
+  x.fillStyle = DAYC.ink; x.font = '12px ' + font; x.textAlign = 'right'; x.fillText('шест', x0 - 8, gy - Hs / 2);
+}
+
+function drawShTop(cv, tip, L0, a1, a2, r) {
+  const { x, w, h } = prepCanvas(cv);
+  const font = getComputedStyle(document.body).fontFamily;
+  x.fillStyle = DAYC.topGround; x.fillRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2, maxR = (isFinite(L0) ? L0 : 1) + 2.4;
+  const sc = (Math.min(w, h) / 2 - 22) / maxR;
+  x.strokeStyle = 'rgba(80,60,30,.12)'; x.lineWidth = 1;
+  for (let i = -6; i <= 6; i++) { x.beginPath(); x.moveTo(cx + i * sc, 0); x.lineTo(cx + i * sc, h); x.stroke(); x.beginPath(); x.moveTo(0, cy + i * sc); x.lineTo(w, cy + i * sc); x.stroke(); }
+  // compass
+  x.fillStyle = DAYC.ink; x.font = '600 12px ' + font; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('С', cx, 11); x.fillText('Ю', cx, h - 11); x.fillText('З', 11, cy); x.fillText('В', w - 11, cy);
+  // circles
+  const circ = (rad, col, lab, dash) => { x.strokeStyle = col; x.lineWidth = 1.6; x.setLineDash(dash); x.beginPath(); x.arc(cx, cy, rad * sc, 0, Math.PI * 2); x.stroke(); x.setLineDash([]); };
+  if (isFinite(L0)) { circ(L0, DAYC.noon, '', [2, 3]); circ(L0 + 1, DAYC.asr, '', []); circ(L0 + 2, DAYC.hanafi, '', [6, 4]); }
+  // path of the shadow tip
+  x.lineWidth = 2;
+  const t0 = toSolar(r[0]), t1 = toSolar(r[1]);
+  let pen = false; x.beginPath(); x.strokeStyle = 'rgba(40,32,22,.55)';
+  for (let t = t0; t <= t1; t += 1 / 60) {
+    const p = shTip(t); if (!p || Math.hypot(p.x, p.y) > maxR * 1.8) { pen = false; continue; }
+    const X = cx + p.x * sc, Y = cy + p.y * sc; pen ? x.lineTo(X, Y) : x.moveTo(X, Y); pen = true;
+  }
+  x.stroke();
+  // prayer points on the path
+  const pt = (t, col, lab, dy) => { if (!isFinite(t)) return; const p = shTip(t); if (!p) return; const X = cx + p.x * sc, Y = cy + p.y * sc;
+    x.fillStyle = col; x.beginPath(); x.arc(X, Y, 4.5, 0, Math.PI * 2); x.fill();
+    x.font = '600 11px ' + font; const tw = x.measureText(lab).width; let right = X > cx; if (right && X + 8 + tw > w - 4) right = false; if (!right && X - 8 - tw < 4) right = true;
+    x.textAlign = right ? 'left' : 'right'; x.fillText(lab, X + (right ? 8 : -8), Y + dy); };
+  pt(12, DAYC.noon, 'полдень', 0); pt(a1, DAYC.asr, 'аср', -7); pt(a2, DAYC.hanafi, 'аср (ханафиты)', 8);
+  // current shadow
+  if (tip) {
+    const X = cx + tip.x * sc, Y = cy + tip.y * sc;
+    x.save(); x.beginPath(); x.rect(0, 0, w, h); x.clip();
+    x.strokeStyle = DAYC.shadow; x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(X, Y); x.stroke(); x.restore();
+    // sun direction marker at the edge
+    const n = Math.hypot(tip.v[0], tip.v[2]) || 1, R0 = Math.min(w, h) / 2 - 24;
+    const sx = cx + tip.v[0] / n * R0, sy = cy + tip.v[2] / n * R0;
+    x.fillStyle = '#f5b83d'; x.beginPath(); x.arc(sx, sy, 8, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(245,184,61,.6)'; x.lineWidth = 1; x.setLineDash([3, 3]); x.beginPath(); x.moveTo(sx, sy); x.lineTo(cx, cy); x.stroke(); x.setLineDash([]);
+  }
+  x.fillStyle = DAYC.stick; x.beginPath(); x.arc(cx, cy, 5, 0, Math.PI * 2); x.fill();
+  x.textBaseline = 'alphabetic';
+}
+
+$('shTime').addEventListener('input', e => { SH.T = +e.target.value; SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow(); });
+$('shPlay').addEventListener('click', () => {
+  const r = shRange(); if (!r) return;
+  SH.playing = !SH.playing;
+  if (SH.playing && SH.T >= r[1] - .05) SH.T = r[0];
+  $('shPlay').textContent = SH.playing ? '❚❚ Пауза' : '▶ Провести день';
+});
+$('shToAsr').addEventListener('click', () => { const a = shAsr(1); if (isFinite(a)) { SH.T = toClock(a); SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow(); } });
+
 /* ================= Story ================= */
 const STEPS = [
   { title: 'Что такое сумерки', set: { city: 'kazan', N: 172, T: 21.6, view: 'sky', cam: 'overview' },
@@ -1523,7 +1716,7 @@ const STEPS = [
     text: () => 'Есть и вторая причина споров. Первый свет фаджра очень слабый, а небо над городом подсвечено фонарями. Заря тонет в засветке и становится заметна только когда Солнце поднимется до −15…−13°. Ниже на странице есть два неба рядом: тёмное и городское.',
     action: { label: 'Перейти к засветке ↓', run: () => document.getElementById('light').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' }) } },
   { title: 'Все намазы за сутки', set: { city: 'kazan', N: 110, T: 2.5, view: 'sky', cam: 'overview', play: true, speed: 1 },
-    text: () => 'Каждая метка на пути Солнца — момент одного из намазов: Фаджр (−18° утром), Восход, Зухр (после верхней точки), Аср (по длине тени шеста), Магриб (закат), Иша (−18° вечером). Время по часам меняется каждый день, а положение Солнца для каждого намаза остаётся тем же. Таблица справа пересчитывается для выбранного места и даты.' }
+    text: () => 'Каждая метка на пути Солнца — момент одного из намазов: Фаджр (−18° утром), Восход, Зухр (после верхней точки), Аср (по длине тени, см. анимацию с шестом ниже), Магриб (закат), Иша (−18° вечером). Время по часам меняется каждый день, а положение Солнца для каждого намаза остаётся тем же. Таблица справа пересчитывается для выбранного места и даты.' }
 ];
 let stepIdx = 0;
 function buildSteps() {
@@ -1557,7 +1750,7 @@ function onPlace() {
   els.lat.value = S.lat; els.day.value = S.N;
   updatePanelStatic();
   if (has3D) { rebuildSkyPath(); rebuildEarthRing(); }
-  drawRace(); drawYear(); updateLp();
+  drawRace(); drawYear(); updateLp(); shReset(); drawShadow();
   onTime();
 }
 function onTime() { updateTime3D(); updatePanelTime(); }
@@ -1596,6 +1789,11 @@ let last = performance.now(), lpAcc = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now;
   if (S.playing) { S.T = (S.T + dt * S.speed + 24) % 24; onTime(); }
+  if (SH.playing) {
+    const r = shRange();
+    if (!r) SH.playing = false;
+    else { SH.T += dt * .8; if (SH.T >= r[1]) { SH.T = r[1]; SH.playing = false; $('shPlay').textContent = '▶ Провести день'; } drawShadow(); }
+  }
   if (lpPlaying) {
     lpAcc += dt;
     S.depr += (S.lpMode === 'dawn' ? -1 : 1) * dt * 1.6;
@@ -1613,12 +1811,12 @@ function frame(now) {
 }
 
 function onTheme() {
-  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart();
+  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow();
 }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
 new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); }, 120); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); });
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); drawShadow(); }, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); });
 
 /* ================= Fullscreen ================= */
 const studio = document.querySelector('.studio');
