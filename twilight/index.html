@@ -170,6 +170,39 @@
     width: max-content;
   }
   .phase i { width: 10px; height: 10px; border-radius: 50%; }
+  /* Fullscreen: the studio (scene, story, panel) fills the screen */
+  .fs-only, .fs-narrow { display: none; }
+  .studio.is-full {
+    position: fixed; inset: 0; z-index: 1000;
+    background: var(--bg);
+    padding-inline: 12px;
+    padding-block: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px);
+    gap: 12px;
+    height: 100%;
+    align-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .studio.is-full .fs-only { display: inline-block; }
+  .studio.is-full .stage { min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
+  .studio.is-full .viewport { height: auto; min-height: 0; }
+  .studio.is-full .story { max-height: 36vh; overflow-y: auto; }
+  .studio.is-full .caption { min-height: auto; }
+  .studio.is-full .caption p { font-size: 17px; }
+  .studio.is-full.hide-text .story { display: none; }
+  .studio.is-full.hide-text .viewport { border-radius: 14px; }
+  .studio.is-full .panel { min-height: 0; max-height: 100%; overflow-y: auto; }
+  @media (max-width: 1039px) {
+    .studio.is-full .fs-narrow { display: inline-block; }
+    .studio.is-full .panel .fs-narrow { display: inline-flex; }
+    .studio.is-full .panel {
+      position: absolute; z-index: 5;
+      top: calc(env(safe-area-inset-top, 0px) + 20px); right: 20px; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+      width: min(360px, calc(100% - 40px));
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .45);
+    }
+    .studio.is-full:not(.show-panel) .panel { display: none; }
+  }
+
   .legend {
     position: absolute; right: 14px; bottom: 14px;
     display: grid; gap: 5px;
@@ -360,6 +393,11 @@
             <button type="button" data-view="earth" aria-pressed="false">Земля из космоса</button>
           </div>
           <div class="seg" role="group" aria-label="Ракурс" id="camSeg"></div>
+          <div class="seg" role="group" aria-label="Экран">
+            <button type="button" class="fs-narrow" id="fsPanel" aria-pressed="false">Настройки</button>
+            <button type="button" class="fs-only" id="fsText" aria-pressed="true">Текст</button>
+            <button type="button" id="fsBtn" aria-pressed="false" title="Клавиша F"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M1 4.5V1h3.5M8.5 1H12v3.5M12 8.5V12H8.5M4.5 12H1V8.5"/></svg><span>На весь экран</span></button>
+          </div>
         </div>
         <div class="hud">
           <div class="clock" id="hudClock">--:--</div>
@@ -388,6 +426,7 @@
     </div>
 
     <aside class="panel" aria-label="Настройки">
+      <button type="button" class="btn small fs-narrow" id="fsPanelClose" style="justify-self:end">Закрыть настройки ✕</button>
       <div class="field">
         <label for="city">Место</label>
         <select id="city"></select>
@@ -1580,6 +1619,50 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onT
 new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); }, 120); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); });
+
+/* ================= Fullscreen ================= */
+const studio = document.querySelector('.studio');
+const fsBtn = $('fsBtn'), fsText = $('fsText'), fsPanel = $('fsPanel');
+const isFull = () => studio.classList.contains('is-full');
+function setFull(on) {
+  studio.classList.toggle('is-full', on);
+  document.body.style.overflow = on ? 'hidden' : '';
+  fsBtn.querySelector('span').textContent = on ? 'Выйти' : 'На весь экран';
+  fsBtn.setAttribute('aria-pressed', String(on));
+  if (!on) { studio.classList.remove('show-panel'); fsPanel.setAttribute('aria-pressed', 'false'); }
+  requestAnimationFrame(() => { resize(); drawDayChart(); });
+}
+function toggleFull() {
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!isFull()) {
+    setFull(true);
+    try {
+      const req = studio.requestFullscreen || studio.webkitRequestFullscreen;
+      const r = req && req.call(studio);
+      if (r && r.catch) r.catch(() => {});   // not allowed here: the page-filling mode still works
+    } catch (e) {}
+  } else {
+    setFull(false);
+    if (fsEl) { const ex = document.exitFullscreen || document.webkitExitFullscreen; try { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+  }
+}
+fsBtn.addEventListener('click', toggleFull);
+fsText.addEventListener('click', () => { const hide = studio.classList.toggle('hide-text'); fsText.setAttribute('aria-pressed', String(!hide)); requestAnimationFrame(resize); });
+fsPanel.addEventListener('click', () => { const on = studio.classList.toggle('show-panel'); fsPanel.setAttribute('aria-pressed', String(on)); if (on) drawDayChart(); });
+$('fsPanelClose').addEventListener('click', () => { studio.classList.remove('show-panel'); fsPanel.setAttribute('aria-pressed', 'false'); });
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, () => {
+  if (!(document.fullscreenElement || document.webkitFullscreenElement) && isFull()) setFull(false);
+}));
+document.addEventListener('keydown', e => {
+  const t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') { toggleFull(); e.preventDefault(); return; }
+  if (!isFull()) return;
+  if (e.key === 'Escape' && !(document.fullscreenElement || document.webkitFullscreenElement)) setFull(false);
+  else if (e.key === 'ArrowRight' || e.key === 'PageDown') { goStep(stepIdx + 1); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { goStep(stepIdx - 1); e.preventDefault(); }
+  else if (e.key === ' ' && t.tagName !== 'BUTTON') { setPlaying(!S.playing); e.preventDefault(); }
+});
 
 init3D();
 buildSteps();
