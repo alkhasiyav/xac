@@ -155,7 +155,7 @@
   .seg button:focus-visible, .btn:focus-visible, .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .vp-event {
-    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    position: absolute; left: 50%; top: 64px; transform: translateX(-50%);
     width: max-content; max-width: min(540px, calc(100% - 24px));
     padding: 11px 15px; border-radius: 10px;
     background: rgba(10, 14, 32, .92);
@@ -483,6 +483,7 @@
         </div>
       </div>
       <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
+      <label class="check"><input type="checkbox" id="boost"> Усилить слабое свечение неба (для проектора)</label>
 
       <dl class="facts" id="facts"></dl>
       <div class="alert" id="alert" hidden></div>
@@ -885,30 +886,43 @@ function initSky() {
   sky.domeMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
     uniforms: {
-      sunAlt: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) },
+      sunAlt: { value: 0 }, gain: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) },
       cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) },
       cNight: { value: hex('#0a1030') }, cDay: { value: hex('#5d9be0') }, cDusk: { value: hex('#ff9a55') },
-      cFirst: { value: hex('#dfe6ff') }, cBlue: { value: hex('#7d9bf0') }
+      cFirst: { value: hex('#9fa9c8') }, cBlue: { value: hex('#4f74d6') }
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `
-      uniform float sunAlt; uniform vec3 sunDir; uniform vec3 cCivil, cNaut, cAstro, cNight, cDay, cDusk, cFirst, cBlue;
+      uniform float sunAlt, gain; uniform vec3 sunDir; uniform vec3 cCivil, cNaut, cAstro, cNight, cDay, cDusk, cFirst, cBlue;
       varying vec3 vP;
       void main(){
         vec3 p = normalize(vP); float a = degrees(asin(clamp(p.y,-1.0,1.0)));
         vec4 col;
         if (a >= 0.0) {
           float day = smoothstep(-4.0, 8.0, sunAlt);
-          // twilight glow: none while the sun is deeper than 18°, a faint band from −18°, growing as it rises
-          float on = smoothstep(-18.25, -17.75, sunAlt);
-          float tw = clamp((sunAlt + 18.0) / 18.0, 0.0, 1.0);
-          float g = on * (0.5 + 0.5 * tw) * (1.0 - day);
-          float hz = max(dot(normalize(vec3(p.x,0.0,p.z)), normalize(vec3(sunDir.x,0.0,sunDir.z) + vec3(1e-5))), 0.0);
-          float near = pow(hz, mix(9.0, 2.5, tw)) * exp(-a / mix(5.0, 18.0, tw));
-          vec3 ct = tw < 0.5 ? mix(cFirst, cBlue, tw * 2.0) : mix(cBlue, cDusk, tw * 2.0 - 1.0);
-          float k = clamp(g * near * 1.6, 0.0, 1.0);
-          vec3 c = mix(mix(cNight, cDay, day), ct, k);
-          col = vec4(c, 0.10 + 0.30 * day + 0.85 * k);
+          // Sky brightness in magnitudes per square arcsecond (lower = brighter), relative to 14 mag to stay in float range.
+          // Twilight near the horizon toward the sun fades about 1 mag (×2.5) per degree of depression; nothing switches on at −18°.
+          float d = -sunAlt;
+          float dd = max(d, -3.0);
+          vec3 hd = normalize(vec3(p.x, 0.0, p.z) + vec3(1e-5));
+          vec3 sd = normalize(vec3(sunDir.x, 0.0, sunDir.z) + vec3(1e-5));
+          float daz = degrees(acos(clamp(dot(hd, sd), -1.0, 1.0)));
+          float lift = clamp(18.0 - dd, 0.0, 21.0);
+          float H = 5.0 + lift * 0.7;               // height of the glow, degrees
+          float W = 35.0 + lift * 5.0;              // width along the horizon, degrees
+          float shape = 0.02 + 0.98 * exp(-a / H) * exp(-(daz / W) * (daz / W));
+          float Bn = pow(10.0, -0.4 * (21.6 - 14.0)) * (1.0 + 0.7 * exp(-a / 12.0));   // natural night sky
+          float Bt = pow(10.0, -0.4 * (5.4 + dd - 14.0 - gain)) * shape;                 // sunlight scattered at twilight
+          float B = Bn + Bt;
+          float L = clamp((log(B) / log(10.0) + 0.4 * (22.4 - 14.0)) / (0.4 * (22.4 - 4.0)), 0.0, 1.0);
+          float lum = pow(L, 1.3);
+          // colour: blue-grey in deep twilight, warm low on the horizon in civil twilight
+          float warm = (1.0 - smoothstep(1.0, 9.0, dd)) * exp(-a / 9.0) * exp(-(daz / 70.0) * (daz / 70.0));
+          vec3 twc = mix(mix(cFirst, cBlue, smoothstep(14.0, 6.0, dd)), cDusk, warm);
+          vec3 hue = mix(cNight, twc, Bt / B);
+          hue = mix(hue, cDay, day);
+          lum = max(lum, day * 0.75);
+          col = vec4(hue / max(max(hue.r, hue.g), max(hue.b, 1e-3)), clamp(lum, 0.0, 0.96));
         } else if (a > -6.0)  col = vec4(cCivil, 0.30);
         else if (a > -12.0)   col = vec4(cNaut, 0.30);
         else if (a > -18.0)   col = vec4(cAstro, 0.36);
@@ -1229,7 +1243,9 @@ function updateTime3D() {
   sky.glowPos.set(v[0] / hzn * R * .97, .5, v[2] / hzn * R * .97);
   const morning = (((t % 24) + 24) % 24) < 12;
   sky.glowOn = alt > -18 && alt < -0.83;
-  sky.glowLbl.el.textContent = alt < -12 ? (morning ? 'первая заря (с −18°)' : 'последние сумерки (до −18°)') : (morning ? 'утренняя заря' : 'вечерние сумерки');
+  sky.glowLbl.el.textContent = morning
+    ? (alt < -15 ? 'заря началась, но ещё почти не видна' : alt < -12 ? 'слабая заря' : 'утренняя заря')
+    : (alt < -15 ? 'последние, едва заметные сумерки' : alt < -12 ? 'сумерки слабеют' : 'вечерние сумерки');
   earth.mesh.rotation.y = H;
 }
 
@@ -1730,7 +1746,7 @@ const STEPS = [
   { title: 'Что такое сумерки', set: { city: 'kazan', N: 172, T: 21.6, view: 'sky', cam: 'overview' },
     text: () => 'Солнце уже зашло, но ещё освещает воздух высоко над нами. Воздух рассеивает этот свет, и небо светится. Чем глубже Солнце под горизонтом, тем слабее свечение. Под горизонтом нарисованы три цветных слоя по 6°: гражданские, навигационные и астрономические сумерки. Ниже −18° свет Солнца до неба уже не доходит, наступает настоящая ночь. Модель можно вращать мышью или пальцем.' },
   { title: 'Момент −18°: появляются первые сумерки', set: { city: 'makkah', N: 80, T: 4.35, view: 'sky', cam: 'eye', play: true, speed: .25 },
-    text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. Как только Солнце поднялось до −18°, над горизонтом появляется первая слабая светлая полоса: это истинная заря, начало времени фаджра. Около этого момента время в модели замедляется. Вечером всё наоборот: когда Солнце опускается ниже −18°, гаснут последние сумерки и наступает время иша.',
+    text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. С −18° начинается истинная заря и время фаджра. Сначала свечение у горизонта едва уловимо, его можно разглядеть только в тёмном месте. С каждым градусом подъёма Солнца оно становится примерно в 2,5 раза ярче: к −15° уже заметна бледная полоса, к −12° заря видна хорошо. Около −18° время в модели замедляется. Вечером всё в обратном порядке: свечение слабеет и при −18° исчезает совсем, наступает время иша. Если смотрите на проекторе, включите в настройках «Усилить слабое свечение».',
     action: { label: 'Показать вечер (иша)', run: () => { S.T = ((toClock(19.0) % 24) + 24) % 24; S.prevAlt = null; setPlaying(true); setView('sky', 'eye'); const v = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R); eye.yaw = Math.atan2(v[0], -v[2]); onTime(); } } },
   { title: 'Мекка: Солнце уходит почти отвесно', set: { city: 'makkah', N: 80, T: 18.2, view: 'sky', cam: 'side', play: true, speed: .5 },
     text: () => { const d = decl(80); return `Вид сбоку. В Мекке путь Солнца наклонён к горизонту под углом около ${Math.round(Math.acos(sin(21.42 * D2R) / cos(d * D2R)) * R2D)}°. Солнце быстро проходит все три слоя и опускается до −18° за ${fmtDur(hoursFor(21.42, d, -18) - hoursFor(21.42, d, DEPTH.sunrise))}. Отсюда привычные «полтора часа» между магрибом и иша.`; } },
@@ -1792,8 +1808,9 @@ let evTimer = null;
 function showEvent(rising) {
   const el = $('vpEvent');
   el.innerHTML = rising
-    ? '<b>Солнце поднялось до −18°.</b> Над горизонтом появилась первая слабая заря. Начинается время фаджра.'
-    : '<b>Солнце опустилось ниже −18°.</b> Последние сумерки исчезли, небо стало по‑ночному тёмным. Наступает время иша.';
+    ? '<b>Солнце поднялось до −18°.</b> Свет Солнца начал подсвечивать небо над горизонтом. Сначала заря едва уловима и видна только в тёмном месте, дальше с каждым градусом она становится ярче. Начинается время фаджра.'
+    : '<b>Солнце опустилось ниже −18°.</b> Исчез последний, едва заметный остаток сумерек. Наступает время иша.';
+  el.style.top = (document.querySelector('.vp-bar').offsetHeight + 22) + 'px';
   el.hidden = false;
   clearTimeout(evTimer); evTimer = setTimeout(() => { el.hidden = true; }, 6500);
 }
@@ -1813,6 +1830,7 @@ els.time.addEventListener('input', () => { S.T = +els.time.value; onTime(); });
 els.play.addEventListener('click', () => setPlaying(!S.playing));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
+$('boost').addEventListener('change', e => { if (has3D) sky.domeMat.uniforms.gain.value = e.target.checked ? 2.5 : 0; });
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 $('fajrA').addEventListener('input', e => { S.fajrA = +e.target.value; $('fajrOut').textContent = String(S.fajrA).replace('.', ',') + '°'; onPlace(); });
 $('ishaA').addEventListener('input', e => { S.ishaA = +e.target.value; $('ishaOut').textContent = String(S.ishaA).replace('.', ',') + '°'; onPlace(); });
