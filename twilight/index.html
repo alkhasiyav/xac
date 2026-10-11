@@ -154,20 +154,6 @@
   .seg button[aria-pressed="true"] { background: rgba(242, 153, 74, .2); color: #FFD3AA; }
   .seg button:focus-visible, .btn:focus-visible, .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .vp-event {
-    position: absolute; left: 50%; top: 64px; transform: translateX(-50%);
-    width: max-content; max-width: min(540px, calc(100% - 24px));
-    padding: 11px 15px; border-radius: 10px;
-    background: rgba(10, 14, 32, .92);
-    border: 1px solid rgba(223, 230, 255, .55);
-    box-shadow: 0 0 28px rgba(190, 205, 255, .25);
-    color: var(--space-ink);
-    font: 500 15px/1.4 var(--sans);
-    text-align: center;
-    pointer-events: none;
-  }
-  .vp-event b { color: #fff; }
-  .lbl.glow { color: #f2f5ff; background: rgba(60, 80, 150, .55); border-color: rgba(223, 230, 255, .5); }
   .hud {
     position: absolute; left: 14px; bottom: 14px;
     display: grid; gap: 6px;
@@ -426,7 +412,6 @@
             <button type="button" id="fsBtn" aria-pressed="false" title="Клавиша F"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M1 4.5V1h3.5M8.5 1H12v3.5M12 8.5V12H8.5M4.5 12H1V8.5"/></svg><span>На весь экран</span></button>
           </div>
         </div>
-        <div class="vp-event" id="vpEvent" role="status" hidden></div>
         <div class="hud">
           <div class="clock" id="hudClock">--:--</div>
           <div class="phase" id="hudPhase"><i></i><span>—</span></div>
@@ -1013,8 +998,6 @@ function initSky() {
   sky.sun = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
   sky.glow = glowSprite('rgba(255,190,90,.6)', 3.2); sky.sun.add(sky.glow); sc.add(sky.sun);
   sky.sunLbl = addLabel('Солнце', '', 'sky', v => v.copy(sky.sun.position));
-  sky.glowPos = new THREE.Vector3(); sky.glowOn = false;
-  sky.glowLbl = addLabel('', 'glow', 'sky', v => v.copy(sky.glowPos), () => sky.glowOn);
 
   sky.pathGroup = new THREE.Group(); sc.add(sky.pathGroup);
   sky.prayerMarkers = new THREE.Group(); sc.add(sky.prayerMarkers);
@@ -1330,13 +1313,6 @@ function updateTime3D() {
   sky.domeMat.uniforms.sunAlt.value = alt;
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
   sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
-  const hzn = Math.hypot(v[0], v[2]) || 1;
-  sky.glowPos.set(v[0] / hzn * R * .97, .5, v[2] / hzn * R * .97);
-  const morning = (((t % 24) + 24) % 24) < 12;
-  sky.glowOn = alt > -18 && alt < -0.83;
-  sky.glowLbl.el.textContent = morning
-    ? (alt < -15 ? 'заря началась, но ещё почти не видна' : alt < -12 ? 'слабая заря' : 'утренняя заря')
-    : (alt < -15 ? 'последние, едва заметные сумерки' : alt < -12 ? 'сумерки слабеют' : 'вечерние сумерки');
   earth.mesh.rotation.y = H;
 }
 
@@ -1928,8 +1904,8 @@ const STEPS = [
   { title: 'Что такое сумерки', set: { city: 'khasavyurt', N: 172, T: 20.4, view: 'sky', cam: 'overview' },
     text: () => 'Солнце уже зашло, но ещё освещает воздух высоко над нами. Воздух рассеивает этот свет, и небо светится. Чем глубже Солнце под горизонтом, тем слабее свечение. Под горизонтом нарисованы три цветных слоя по 6°: гражданские, навигационные и астрономические сумерки. Ниже −18° свет Солнца до неба уже не доходит, наступает настоящая ночь. Модель можно вращать мышью или пальцем.' },
   { title: 'Момент −18°: появляются первые сумерки', set: { city: 'makkah', N: 80, T: 4.35, view: 'sky', cam: 'eye', play: true, speed: .25 },
-    text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. С −18° начинается истинная заря и время фаджра. Сначала свечение у горизонта едва уловимо, его можно разглядеть только в тёмном месте. С каждым градусом подъёма Солнца оно становится примерно в 2,5 раза ярче: к −15° уже заметна бледная полоса, к −12° заря видна хорошо. Около −18° время в модели замедляется. Вечером всё в обратном порядке: свечение слабеет и при −18° исчезает совсем, наступает время иша. Если смотрите на проекторе, включите в настройках «Усилить слабое свечение».',
-    action: { label: 'Показать вечер (иша)', run: () => { S.T = ((toClock(19.0) % 24) + 24) % 24; S.prevAlt = null; setPlaying(true); setView('sky', 'eye'); const v = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R); eye.yaw = Math.atan2(v[0], -v[2]); onTime(); } } },
+    text: () => 'Смотрим на восток перед рассветом. Пока Солнце глубже 18° под горизонтом, его свет до нашего неба не доходит, и небо полностью тёмное. С −18° начинается истинная заря и время фаджра. Сначала свечение у горизонта едва уловимо, его можно разглядеть только в тёмном месте. С каждым градусом подъёма Солнца оно становится примерно в 2,5 раза ярче: к −15° уже заметна бледная полоса, к −12° заря видна хорошо. Вечером всё в обратном порядке: свечение слабеет и при −18° исчезает совсем, наступает время иша. Если смотрите на проекторе, включите в настройках «Усилить слабое свечение».',
+    action: { label: 'Показать вечер (иша)', run: () => { S.T = ((toClock(19.0) % 24) + 24) % 24; setPlaying(true); setView('sky', 'eye'); const v = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R); eye.yaw = Math.atan2(v[0], -v[2]); onTime(); } } },
   { title: 'Мекка: Солнце уходит почти отвесно', set: { city: 'makkah', N: 80, T: 18.2, view: 'sky', cam: 'side', play: true, speed: .5 },
     text: () => { const d = decl(80); return `Вид сбоку. В Мекке путь Солнца наклонён к горизонту под углом около ${Math.round(Math.acos(sin(21.42 * D2R) / cos(d * D2R)) * R2D)}°. Солнце быстро проходит все три слоя и опускается до −18° за ${fmtDur(hoursFor(21.42, d, -18) - hoursFor(21.42, d, DEPTH.sunrise))}. Отсюда привычные «полтора часа» между магрибом и иша.`; } },
   { title: 'Казань, март: путь идёт наискось', set: { city: 'kazan', N: 80, T: 18.6, view: 'sky', cam: 'side', play: true, speed: .5 },
@@ -1964,8 +1940,7 @@ function goStep(i, initial) {
   S.city = st.city; S.lat = city().lat; S.N = st.N;
   els.city.value = S.city;
   onPlace();
-  S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24; S.prevAlt = null;
-  $('vpEvent').hidden = true;
+  S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24;
   if (st.speed) { S.speed = st.speed; els.speed.value = String(st.speed); }
   setPlaying(!!st.play && !initial && !reduceMotion);
   setView(st.view, st.cam, initial);
@@ -1983,23 +1958,9 @@ function onPlace() {
   updatePanelStatic();
   if (has3D) { rebuildSkyPath(); rebuildEarthRing(); }
   drawRace(); drawYear(); updateLp(); shReset(); drawShadow();
-  S.prevAlt = null;
   onTime();
 }
-let evTimer = null;
-function showEvent(rising) {
-  const el = $('vpEvent');
-  el.innerHTML = rising
-    ? '<b>Солнце поднялось до −18°.</b> Свет Солнца начал подсвечивать небо над горизонтом. Сначала заря едва уловима и видна только в тёмном месте, дальше с каждым градусом она становится ярче. Начинается время фаджра.'
-    : '<b>Солнце опустилось ниже −18°.</b> Исчез последний, едва заметный остаток сумерек. Наступает время иша.';
-  el.style.top = (document.querySelector('.vp-bar').offsetHeight + 22) + 'px';
-  el.hidden = false;
-  clearTimeout(evTimer); evTimer = setTimeout(() => { el.hidden = true; }, 6500);
-}
 function onTime() {
-  const alt = altAt(S.lat, dec(), toSolar(S.T));
-  if (S.prevAlt != null && (S.prevAlt + 18) * (alt + 18) < 0 && Math.abs(alt - S.prevAlt) < 3) showEvent(alt > S.prevAlt);
-  S.prevAlt = alt;
   updateTime3D(); updatePanelTime();
 }
 function setPlaying(p) { S.playing = p; els.play.textContent = p ? '❚❚ Пауза' : '▶ Пустить время'; }
@@ -2041,8 +2002,7 @@ let last = performance.now(), lpAcc = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now;
   if (S.playing) {
-    const near18 = Math.abs(altAt(S.lat, dec(), toSolar(S.T)) + 18) < 1.2;   // slow down so the −18° moment is seen
-    S.T = (S.T + dt * (near18 ? Math.min(S.speed, .2) : S.speed) + 24) % 24; onTime();
+    S.T = (S.T + dt * S.speed + 24) % 24; onTime();
   }
   if (SH.playing) {
     const r = shRange();
