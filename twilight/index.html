@@ -1,0 +1,1590 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сумерки и время намаза</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600&display=swap">
+<style>
+  /* Layout: a dark "observatory" stage (3D) with a control rail beside it, then a long read of charts and simulations below. */
+  :root {
+    --bg: #EEF0F6;
+    --surface: #FFFFFF;
+    --sunken: #E4E7F0;
+    --ink: #141A2F;
+    --muted: #586082;
+    --line: #D6DAE6;
+    --accent: #B4520E;
+    --accent-soft: #F7E2CF;
+    --accent-ink: #FFFFFF;
+    --space: #060914;
+    --space-ink: #E8EAF4;
+    --space-muted: #98A0C2;
+    --space-line: rgba(160, 172, 220, .18);
+    --day: #F4C443;
+    --civil: #EE8744;
+    --naut: #8A6DD6;
+    --astro: #3C56B8;
+    --night: #10162E;
+    --display: "Unbounded", "Trebuchet MS", system-ui, sans-serif;
+    --sans: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --arabic: "Amiri", "Noto Naskh Arabic", "Geeza Pro", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0B0E1B;
+      --surface: #131931;
+      --sunken: #0F142A;
+      --ink: #E6E9F5;
+      --muted: #9AA2C4;
+      --line: #252D4C;
+      --accent: #F2994A;
+      --accent-soft: #3A2716;
+      --accent-ink: #1A0E04;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0B0E1B;
+    --surface: #131931;
+    --sunken: #0F142A;
+    --ink: #E6E9F5;
+    --muted: #9AA2C4;
+    --line: #252D4C;
+    --accent: #F2994A;
+    --accent-soft: #3A2716;
+    --accent-ink: #1A0E04;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 16px/1.55 var(--sans);
+    margin: 0;
+  }
+  .page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 64px;
+    display: grid;
+    gap: 56px;
+  }
+  @media (min-width: 720px) { .page { padding-inline: 28px; } }
+
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+  h1 { font-size: clamp(26px, 4.4vw, 46px); line-height: 1.12; }
+  h2 { font-size: clamp(21px, 2.8vw, 30px); line-height: 1.2; }
+  h3 { font-size: 16px; line-height: 1.3; font-weight: 500; }
+  p { margin: 0; }
+  .eyebrow {
+    font: 500 12px/1.2 var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--accent);
+  }
+  .lead { font-size: 18px; color: var(--muted); max-width: 66ch; }
+  .prose { display: grid; gap: 14px; max-width: 68ch; }
+  .prose p { color: var(--ink); }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  b, strong { font-weight: 600; }
+
+  .intro { display: grid; gap: 14px; }
+  .intro .bands { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 6px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font: 500 13px/1 var(--sans);
+    color: var(--muted);
+  }
+  .chip i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+
+  /* ---------- Studio ---------- */
+  .studio {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  @media (min-width: 1040px) {
+    .studio { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+  }
+  .stage { display: grid; gap: 0; min-width: 0; }
+  .viewport {
+    position: relative;
+    height: clamp(380px, 64vh, 700px);
+    background: var(--space);
+    color: var(--space-ink);
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+  .viewport canvas.gl { display: block; width: 100%; height: 100%; cursor: grab; }
+  .viewport canvas.gl:active { cursor: grabbing; }
+  .vp-bar {
+    position: absolute; left: 12px; right: 12px; top: 12px;
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: flex-start;
+    pointer-events: none;
+  }
+  .vp-bar > * { pointer-events: auto; }
+  .seg {
+    display: inline-flex; flex-wrap: wrap;
+    background: rgba(14, 19, 40, .78);
+    border: 1px solid var(--space-line);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+    backdrop-filter: blur(6px);
+  }
+  .seg button {
+    font: 500 13px/1 var(--sans);
+    color: var(--space-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 11px;
+    cursor: pointer;
+  }
+  .seg button:hover { color: var(--space-ink); }
+  .seg button[aria-pressed="true"] { background: rgba(242, 153, 74, .2); color: #FFD3AA; }
+  .seg button:focus-visible, .btn:focus-visible, .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .hud {
+    position: absolute; left: 14px; bottom: 14px;
+    display: grid; gap: 6px;
+    pointer-events: none;
+  }
+  .hud .clock { font: 500 34px/1 var(--mono); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .hud .clock small { font-size: 13px; color: var(--space-muted); letter-spacing: 0; margin-left: 6px; }
+  .phase {
+    display: inline-flex; align-items: center; gap: 8px;
+    font: 500 13px/1 var(--sans);
+    padding: 7px 10px; border-radius: 999px;
+    background: rgba(14, 19, 40, .78);
+    border: 1px solid var(--space-line);
+    width: max-content;
+  }
+  .phase i { width: 10px; height: 10px; border-radius: 50%; }
+  .legend {
+    position: absolute; right: 14px; bottom: 14px;
+    display: grid; gap: 5px;
+    font: 400 12px/1.2 var(--sans); color: var(--space-muted);
+    background: rgba(14, 19, 40, .7);
+    border: 1px solid var(--space-line);
+    border-radius: 10px; padding: 9px 11px;
+    pointer-events: none;
+  }
+  .legend .chip { color: var(--space-muted); font-size: 12px; }
+  @media (max-width: 560px) { .legend { display: none; } .hud .clock { font-size: 26px; } }
+  .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .lbl {
+    position: absolute; left: 0; top: 0;
+    font: 500 11.5px/1 var(--sans);
+    color: var(--space-ink);
+    white-space: nowrap;
+    padding: 4px 7px; border-radius: 6px;
+    background: rgba(8, 12, 28, .72);
+    border: 1px solid var(--space-line);
+    transform: translate(-50%, -130%);
+    will-change: transform;
+  }
+  .lbl.plain { background: none; border: 0; color: var(--space-muted); padding: 0; font-size: 11px; }
+  .lbl.pray { color: #FFE2C4; border-color: rgba(242, 153, 74, .45); }
+  .lbl.you { color: #fff; background: rgba(180, 82, 14, .85); border-color: transparent; }
+
+  .story {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 0;
+    border-radius: 0 0 14px 14px;
+    padding: 16px;
+    display: grid; gap: 12px;
+  }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .steps .lab { font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-right: 6px; }
+  .step {
+    font: 500 14px/1 var(--mono);
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink);
+    cursor: pointer;
+  }
+  .step[aria-current="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .caption { display: grid; gap: 8px; min-height: 96px; }
+  .caption h3 { font-size: 17px; }
+  .caption p { max-width: 75ch; }
+  .story-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    font: 500 14px/1 var(--sans);
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.small { padding: 7px 10px; font-size: 13px; }
+
+  /* ---------- Panel ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    display: grid; gap: 18px;
+    min-width: 0;
+  }
+  .field { display: grid; gap: 8px; }
+  .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .field label, .field .lab { font: 500 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .field output { font: 500 15px/1 var(--mono); font-variant-numeric: tabular-nums; }
+  select {
+    font: 400 15px/1.2 var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 9px 10px;
+    width: 100%;
+  }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  .facts { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; font-size: 14px; padding-top: 2px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .alert {
+    font-size: 14px; line-height: 1.45;
+    padding: 10px 12px; border-radius: 10px;
+    background: var(--accent-soft); color: var(--ink);
+  }
+
+  .prayers { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .prayers td { padding: 7px 0; border-top: 1px solid var(--line); vertical-align: baseline; }
+  .prayers td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prayers .ar { font-family: var(--arabic); font-size: 17px; color: var(--muted); margin-left: 6px; }
+  .prayers tr.now td { color: var(--accent); font-weight: 600; }
+  .prayers .why { display: block; font-size: 12.5px; color: var(--muted); font-weight: 400; }
+
+  details.settings { border-top: 1px solid var(--line); padding-top: 12px; }
+  details.settings summary { cursor: pointer; font-weight: 500; font-size: 14px; }
+  details.settings[open] summary { margin-bottom: 12px; }
+  details.settings .field + .field { margin-top: 12px; }
+
+  canvas.chart { display: block; width: 100%; }
+
+  /* ---------- Sections ---------- */
+  .sect { display: grid; gap: 22px; }
+  .sect-head { display: grid; gap: 10px; }
+  .two { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 960px) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .fig {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    display: grid; gap: 12px;
+    min-width: 0;
+  }
+  .fig figcaption { font-size: 14px; color: var(--muted); }
+  .fig .fig-title { font: 600 15px/1.3 var(--sans); }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+  .keys span { display: inline-flex; align-items: center; gap: 7px; }
+  .keys i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  .skies { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .skies { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .sky { display: grid; gap: 8px; min-width: 0; }
+  .sky canvas { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 10px; background: var(--space); }
+  .sky .cap { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; flex-wrap: wrap; }
+  .lp-controls { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .lp-controls { grid-template-columns: 1.3fr 1fr auto; align-items: end; } }
+  .verdict { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .verdict > div { background: var(--sunken); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+  .verdict .k { font-size: 13px; color: var(--muted); }
+  .verdict .v { font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+  .verdict .v.warn { color: var(--accent); }
+
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; display: grid; gap: 8px; align-content: start;
+  }
+  .card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card .ar { font-family: var(--arabic); font-size: 24px; line-height: 1; color: var(--accent); }
+  .card .crit { font: 500 13px/1.3 var(--mono); color: var(--muted); }
+  .card p { font-size: 14.5px; }
+
+  .notes { display: grid; gap: 10px; max-width: 72ch; font-size: 14px; color: var(--muted); }
+  .notes li { margin-bottom: 6px; }
+  ol.methods { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 70ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="intro">
+    <div class="eyebrow">Астрономия времени намаза</div>
+    <h1>Почему летом сумерки у нас длятся всю ночь, а в Мекке гаснут за час с небольшим</h1>
+    <p class="lead">Сумерки исчезают, когда Солнце опускается на 18° под горизонтом. На любой широте это одни и те же 18°. Но путь Солнца к ним разный: на юге оно уходит под горизонт почти отвесно, на севере скользит наискось. Покрутите сцену, поменяйте город и дату и посмотрите сами.</p>
+    <div class="bands" aria-label="Обозначения">
+      <span class="chip"><i style="background: var(--day)"></i>День</span>
+      <span class="chip"><i style="background: var(--civil)"></i>Гражданские сумерки, 0…−6°</span>
+      <span class="chip"><i style="background: var(--naut)"></i>Навигационные, −6…−12°</span>
+      <span class="chip"><i style="background: var(--astro)"></i>Астрономические, −12…−18°</span>
+      <span class="chip"><i style="background: var(--night); outline: 1px solid var(--line)"></i>Ночь, ниже −18°</span>
+    </div>
+  </header>
+
+  <section class="studio" aria-label="Интерактивная модель">
+    <div class="stage">
+      <div class="viewport" id="viewport">
+        <div class="labels" id="labels"></div>
+        <div class="vp-bar">
+          <div class="seg" role="group" aria-label="Сцена">
+            <button type="button" data-view="sky" aria-pressed="true">Небо наблюдателя</button>
+            <button type="button" data-view="earth" aria-pressed="false">Земля из космоса</button>
+          </div>
+          <div class="seg" role="group" aria-label="Ракурс" id="camSeg"></div>
+        </div>
+        <div class="hud">
+          <div class="clock" id="hudClock">--:--</div>
+          <div class="phase" id="hudPhase"><i></i><span>—</span></div>
+        </div>
+        <div class="legend" aria-hidden="true">
+          <span class="chip"><i style="background: var(--day)"></i>Солнце над горизонтом</span>
+          <span class="chip"><i style="background: var(--civil)"></i>0…−6°</span>
+          <span class="chip"><i style="background: var(--naut)"></i>−6…−12°</span>
+          <span class="chip"><i style="background: var(--astro)"></i>−12…−18°</span>
+          <span class="chip"><i style="background: #59628A"></i>ниже −18°</span>
+        </div>
+      </div>
+      <div class="story">
+        <div class="steps" id="steps"><span class="lab">Объяснение по шагам</span></div>
+        <div class="caption" aria-live="polite">
+          <h3 id="capTitle">—</h3>
+          <p id="capText"></p>
+        </div>
+        <div class="story-nav">
+          <button type="button" class="btn small" id="prevStep">← Назад</button>
+          <button type="button" class="btn small primary" id="nextStep">Дальше →</button>
+          <button type="button" class="btn small" id="capAction" hidden></button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel" aria-label="Настройки">
+      <div class="field">
+        <label for="city">Место</label>
+        <select id="city"></select>
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="lat">Широта</label><output id="latOut" for="lat">55,8° с. ш.</output></div>
+        <input type="range" id="lat" min="0" max="70" step="0.1" value="55.8">
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="day">Дата</label><output id="dayOut" for="day">—</output></div>
+        <input type="range" id="day" min="1" max="365" step="1" value="172">
+        <div class="row">
+          <button type="button" class="btn small" data-day="80">21 марта</button>
+          <button type="button" class="btn small" data-day="172">21 июня</button>
+          <button type="button" class="btn small" data-day="266">23 сент.</button>
+          <button type="button" class="btn small" data-day="355">21 дек.</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="time">Время</label><output id="timeOut" for="time">—</output></div>
+        <input type="range" id="time" min="0" max="23.99" step="0.01" value="22">
+        <div class="row">
+          <button type="button" class="btn small primary" id="play">▶ Пустить время</button>
+          <select id="speed" aria-label="Скорость" style="width:auto">
+            <option value="0.25">15 мин/с</option>
+            <option value="0.5">30 мин/с</option>
+            <option value="1" selected>1 ч/с</option>
+            <option value="2">2 ч/с</option>
+          </select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
+
+      <dl class="facts" id="facts"></dl>
+      <div class="alert" id="alert" hidden></div>
+
+      <div class="field">
+        <span class="lab">Высота Солнца за сутки</span>
+        <canvas class="chart" id="dayChart" height="170" aria-label="График высоты Солнца за сутки"></canvas>
+      </div>
+
+      <div class="field">
+        <span class="lab" id="prayHead">Время намазов</span>
+        <table class="prayers"><tbody id="prayTable"></tbody></table>
+      </div>
+
+      <details class="settings">
+        <summary>Углы и методика расчёта</summary>
+        <div class="field">
+          <div class="field-head"><label for="fajrA">Фаджр: Солнце под горизонтом на</label><output id="fajrOut">18°</output></div>
+          <input type="range" id="fajrA" min="12" max="20" step="0.5" value="18">
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="ishaA">Иша: Солнце под горизонтом на</label><output id="ishaOut">18°</output></div>
+          <input type="range" id="ishaA" min="12" max="20" step="0.5" value="18">
+        </div>
+        <div class="field">
+          <label for="asr">Аср</label>
+          <select id="asr">
+            <option value="1">Тень = длина предмета + полуденная тень</option>
+            <option value="2">Тень = 2 длины предмета + полуденная тень (ханафиты)</option>
+          </select>
+        </div>
+      </details>
+    </aside>
+  </section>
+
+  <section class="sect" id="race">
+    <div class="sect-head">
+      <div class="eyebrow">Почему полутора часов хватает не везде</div>
+      <h2>Гонка до −18°: кто быстрее теряет сумерки</h2>
+      <div class="prose">
+        <p>На графике слева Солнце «стартует» с горизонта в момент заката. Чем круче линия идёт вниз, тем быстрее темнеет. На экваторе и в Мекке Солнце пересекает отметку −18° примерно через 70–85 минут. Отсюда и привычка считать, что после магриба до иша проходит около полутора часов.</p>
+        <p>На широте Москвы и Казани линия идёт полого. Весной и осенью Солнцу нужно больше двух часов. А с начала мая до начала августа линия разворачивается вверх, так и не дойдя до −18°: сумерки на севере неба не гаснут всю ночь.</p>
+      </div>
+    </div>
+    <div class="two">
+      <figure class="fig" style="margin:0">
+        <div class="fig-title" id="raceTitle">После заката</div>
+        <canvas class="chart" id="raceChart" height="300" aria-label="Высота Солнца после заката на разных широтах"></canvas>
+        <div class="keys" id="raceKeys"></div>
+        <figcaption>По горизонтали: минуты после заката. По вертикали: насколько Солнце опустилось под горизонт. Дата и город берутся из настроек модели выше.</figcaption>
+      </figure>
+      <figure class="fig" style="margin:0">
+        <div class="fig-title">От заката до конца сумерек, весь год</div>
+        <canvas class="chart" id="yearChart" height="300" aria-label="Продолжительность сумерек в течение года"></canvas>
+        <div class="keys" id="yearKeys"></div>
+        <figcaption>Столько же длятся утренние сумерки: от начала фаджра (−18°) до восхода. Заштрихованная полоса сверху: дни, когда сумерки не заканчиваются совсем. Самые короткие сумерки на средних широтах бывают около равноденствий, а не зимой.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="sect" id="light">
+    <div class="sect-head">
+      <div class="eyebrow">Световое загрязнение</div>
+      <h2>«Не вижу рассвета» ещё не значит «рассвет не начался»</h2>
+      <div class="prose">
+        <p>Первый свет зари (истинный рассвет, аль‑фаджр ас‑садик) очень слабый. Когда Солнце на 18° под горизонтом, свечение неба от него едва отличимо от фона даже в степи или тайге, вдали от фонарей.</p>
+        <p>Над городом небо подсвечено фонарями, окнами и рекламой. Этот свет рассеивается в воздухе, особенно в дымке и пыли, и небо ночью становится серо‑оранжевым. Слабая заря тонет в этом фоне. Глаз замечает рассвет только тогда, когда он становится ярче городской засветки, то есть когда Солнце поднимется до −15° или даже −13°. На наших широтах Солнце поднимается медленно, и это превращается в 30–60 минут опоздания. Человек в городе видит рассвет поздно и думает, что время фаджра ещё не наступило.</p>
+      </div>
+    </div>
+
+    <div class="fig">
+      <div class="lp-controls">
+        <div class="field">
+          <div class="field-head"><label for="depr">Солнце под горизонтом</label><output id="deprOut">16°</output></div>
+          <input type="range" id="depr" min="0" max="24" step="0.1" value="16">
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="bortle">Засветка неба в вашем месте</label><output id="bortleOut">7</output></div>
+          <input type="range" id="bortle" min="1" max="9" step="1" value="7">
+        </div>
+        <div class="row">
+          <button type="button" class="btn primary" id="lpPlay">▶ Показать рассвет</button>
+          <div class="seg" role="group" aria-label="Утро или вечер" id="lpMode" style="background:var(--sunken);border-color:var(--line)">
+            <button type="button" data-mode="dawn" aria-pressed="true" style="color:var(--ink)">Утро</button>
+            <button type="button" data-mode="dusk" aria-pressed="false" style="color:var(--ink)">Вечер</button>
+          </div>
+        </div>
+      </div>
+      <div class="skies">
+        <div class="sky">
+          <canvas id="skyDark" width="640" height="360" aria-label="Небо вдали от городов"></canvas>
+          <div class="cap"><b>Вдали от городов</b><span class="muted" id="skyDarkNote">—</span></div>
+        </div>
+        <div class="sky">
+          <canvas id="skyCity" width="640" height="360" aria-label="Небо с засветкой"></canvas>
+          <div class="cap"><b id="skyCityTitle">Город</b><span class="muted" id="skyCityNote">—</span></div>
+        </div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+      <figcaption>Упрощённая модель: яркость зари у горизонта растёт примерно в 2,5 раза на каждый градус подъёма Солнца, а глаз замечает зарю, когда она добавляет к фону неба около четверти. Реальный порог зависит от зрения, дымки, Луны и направления на город.</figcaption>
+    </div>
+
+    <div class="two">
+      <figure class="fig" style="margin:0">
+        <div class="fig-title">Яркость зари против яркости засветки</div>
+        <canvas class="chart" id="lpChart" height="280" aria-label="Яркость неба в зависимости от глубины Солнца"></canvas>
+        <figcaption>Заря видна, пока её линия выше полосы фона. Чем ярче засветка, тем позже утром заря «выныривает» из фона и тем раньше вечером в нём тонет.</figcaption>
+      </figure>
+      <div class="prose" style="align-content:start">
+        <h3>Что из этого следует</h3>
+        <p>Наблюдение глазом в городе ненадёжно в обе стороны. Утром рассвет становится заметен поздно, и фаджр совершают с опозданием. Вечером остатки зари теряются в засветке рано, и может показаться, что сумерки уже ушли, хотя Солнце ещё не опустилось до нужной глубины.</p>
+        <p>Положение Солнца от засветки не зависит. Его можно точно рассчитать для любого места и дня, поэтому расписания строят по углу Солнца под горизонтом, а не по тому, что видно из окна.</p>
+        <p class="muted">Шкала засветки 1–9 соответствует шкале Бортля: 1 — тёмное небо без огней, 4 — деревня и дачи, 6 — пригород, 7–9 — город и центр мегаполиса.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect" id="prayers">
+    <div class="sect-head">
+      <div class="eyebrow">Время намазов с точки зрения астрономии</div>
+      <h2>Каждый намаз привязан к положению Солнца</h2>
+      <p class="lead">Часы показывают условное время. Признаки намазов в шариате связаны с тем, где находится Солнце и какую тень оно даёт. В модели выше эти точки отмечены прямо на пути Солнца.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="top"><h3>Фаджр</h3><span class="ar" lang="ar">الفجر</span></div>
+        <div class="crit">Солнце ≈ 18° под горизонтом, восток</div>
+        <p>Начинается с истинной зари: над восточным горизонтом появляется слабое белое свечение, которое расширяется вдоль горизонта. Разные методики берут от 15° до 19,5°. Время заканчивается с восходом.</p>
+      </article>
+      <article class="card">
+        <div class="top"><h3>Восход</h3><span class="ar" lang="ar">الشروق</span></div>
+        <div class="crit">центр Солнца на −0,83°</div>
+        <p>Верхний край диска показался над горизонтом. Центр Солнца при этом ещё чуть ниже горизонта: мешает радиус диска и преломление света в воздухе.</p>
+      </article>
+      <article class="card">
+        <div class="top"><h3>Зухр</h3><span class="ar" lang="ar">الظهر</span></div>
+        <div class="crit">после прохождения меридиана</div>
+        <p>Солнце в самой высокой точке над югом, тени самые короткие. Как только Солнце сместилось к западу и тень начала удлиняться, наступает зухр. По часам это обычно не 12:00.</p>
+      </article>
+      <article class="card">
+        <div class="top"><h3>Аср</h3><span class="ar" lang="ar">العصر</span></div>
+        <div class="crit">тень = предмет + полуденная тень</div>
+        <p>Когда тень предмета стала равна его высоте плюс длина полуденной тени. У ханафитов нужна двойная высота. В модели неба рядом с человеком стоит шест и видна его тень.</p>
+      </article>
+      <article class="card">
+        <div class="top"><h3>Магриб</h3><span class="ar" lang="ar">المغرب</span></div>
+        <div class="crit">центр Солнца на −0,83°, запад</div>
+        <p>Верхний край Солнца скрылся за горизонтом. С этого момента начинаются сумерки.</p>
+      </article>
+      <article class="card">
+        <div class="top"><h3>Иша</h3><span class="ar" lang="ar">العشاء</span></div>
+        <div class="crit">сумерки исчезли: ≈ 15–18°</div>
+        <p>По мнению большинства учёных, после исчезновения красной зари (шафак). У Абу Ханифы — после исчезновения белого свечения, которое гаснет позже, около −18°. Если Солнце так глубоко не опускается, признак не наступает.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="sect" id="highlat">
+    <div class="sect-head">
+      <div class="eyebrow">Высокие широты</div>
+      <h2>Что делают, когда признака иша нет</h2>
+      <div class="prose">
+        <p>Летом на широте Москвы, Казани и Уфы Солнце в полночь опускается всего на 10–13°. Признаки иша и начала фаджра по 18° в такие ночи не наступают совсем. Это не ошибка расписания и не «очень длинные сумерки»: Солнце физически не доходит до нужной глубины. Подождать подольше здесь не поможет.</p>
+        <p>Для таких дней учёные предлагают разные способы определения времени. Самые распространённые:</p>
+      </div>
+    </div>
+    <ol class="methods">
+      <li><b>Середина ночи.</b> Время между закатом и восходом делится пополам: иша после магриба не позже середины, фаджр после неё.</li>
+      <li><b>Одна седьмая ночи.</b> Ночь делят на семь частей: иша через 1/7 после заката, фаджр за 1/7 до восхода.</li>
+      <li><b>Угловая доля.</b> Доля ночи берётся пропорционально углу: при 18° это 18/60 ночи.</li>
+      <li><b>Ближайшая широта или ближайший день</b>, когда признак ещё есть. Например, широта 48,5° или последний день перед белыми ночами.</li>
+    </ol>
+    <p class="muted" style="max-width:70ch">Какой способ использовать, решают муфтияты и учёные. Здесь только астрономия: она показывает, почему вопрос вообще возникает. Для практики ориентируйтесь на расписание вашего муфтията.</p>
+  </section>
+
+  <footer class="notes">
+    <b style="color:var(--ink)">О точности модели</b>
+    <ul style="margin:0; padding-left:20px">
+      <li>Положение Солнца считается по упрощённым формулам (склонение и уравнение времени). Ошибка обычно не больше 1–3 минут.</li>
+      <li>Для городов время показано местное (по часовому поясу). Для произвольной широты показано солнечное время: полдень в 12:00.</li>
+      <li>Модель неба с засветкой иллюстративная: она показывает принцип, а не точный порог для конкретного места.</li>
+    </ul>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= Astronomy ================= */
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const sin = Math.sin, cos = Math.cos;
+const DEPTH = { sunrise: -0.833 };
+const decl = N => 23.44 * sin(2 * Math.PI * (284 + N) / 365);
+const eot = N => { const B = 2 * Math.PI * (N - 81) / 364; return 9.87 * sin(2 * B) - 7.53 * cos(B) - 1.5 * sin(B); };
+function altAt(lat, dec, tSolar) {
+  const H = (tSolar - 12) * 15 * D2R;
+  return Math.asin(sin(lat * D2R) * sin(dec * D2R) + cos(lat * D2R) * cos(dec * D2R) * cos(H)) * R2D;
+}
+// hours from noon at which the sun reaches altitude h0; NaN if never
+function hoursFor(lat, dec, h0) {
+  const c = (sin(h0 * D2R) - sin(lat * D2R) * sin(dec * D2R)) / (cos(lat * D2R) * cos(dec * D2R));
+  if (c < -1 || c > 1) return NaN;
+  return Math.acos(c) * R2D / 15;
+}
+// direction in observer frame (three.js: x = east, y = up, z = south)
+function sunVec(lat, dec, H) {
+  const f = lat * D2R, d = dec * D2R;
+  const east = -cos(d) * sin(H);
+  const north = cos(f) * sin(d) - sin(f) * cos(d) * cos(H);
+  const up = sin(f) * sin(d) + cos(f) * cos(d) * cos(H);
+  return [east, up, -north];
+}
+function asrAlt(lat, dec, k) { return Math.atan(1 / (k + Math.tan(Math.abs(lat - dec) * D2R))) * R2D; }
+
+/* ================= Data ================= */
+const CITIES = [
+  { id: 'equator', name: 'Экватор (условная точка)', lat: 0 },
+  { id: 'makkah', name: 'Мекка', lat: 21.42, lon: 39.83, tz: 3 },
+  { id: 'makhachkala', name: 'Махачкала', lat: 42.98, lon: 47.5, tz: 3 },
+  { id: 'grozny', name: 'Грозный', lat: 43.32, lon: 45.69, tz: 3 },
+  { id: 'ufa', name: 'Уфа', lat: 54.74, lon: 55.97, tz: 5 },
+  { id: 'moscow', name: 'Москва', lat: 55.76, lon: 37.62, tz: 3 },
+  { id: 'kazan', name: 'Казань', lat: 55.79, lon: 49.12, tz: 3 },
+  { id: 'spb', name: 'Санкт-Петербург', lat: 59.94, lon: 30.31, tz: 3 },
+  { id: 'surgut', name: 'Сургут', lat: 61.25, lon: 73.4, tz: 5 },
+  { id: 'murmansk', name: 'Мурманск', lat: 68.97, lon: 33.07, tz: 3 },
+  { id: 'custom', name: 'Своя широта', lat: null }
+];
+const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const MDAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+const MONTH_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+function dateLabel(N) { let m = 0; while (N > MDAYS[m]) { N -= MDAYS[m]; m++; } return N + ' ' + MONTHS[m]; }
+const fmtDeg = (x, d = 1) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d).replace('.', ',') + '°';
+function fmtHM(h) {
+  if (!isFinite(h)) return '—';
+  h = ((h % 24) + 24) % 24;
+  let m = Math.round(h * 60); if (m >= 1440) m -= 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+function fmtDur(hours) {
+  if (!isFinite(hours)) return '—';
+  const m = Math.round(hours * 60), h = Math.floor(m / 60), r = m % 60;
+  return h ? (h + ' ч' + (r ? ' ' + r + ' мин' : '')) : r + ' мин';
+}
+
+/* ================= State ================= */
+const S = {
+  city: 'kazan', lat: 55.79, N: 172, T: 23.0, view: 'sky', cam: 'overview',
+  playing: false, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
+  bortle: 7, depr: 16, lpMode: 'dawn'
+};
+const city = () => CITIES.find(c => c.id === S.city);
+const dec = () => decl(S.N);
+function offset() { const c = city(); if (!c || c.lon == null) return 0; return -eot(S.N) / 60 + c.tz - c.lon / 15; }
+const toSolar = T => T - offset();
+const toClock = t => t + offset();
+
+function prayerTimes() {
+  const d = dec(), lat = S.lat;
+  const hr = hoursFor(lat, d, DEPTH.sunrise);
+  const hf = hoursFor(lat, d, -S.fajrA);
+  const hi = hoursFor(lat, d, -S.ishaA);
+  const ha = hoursFor(lat, d, asrAlt(lat, d, S.asrK));
+  const polarDay = isNaN(hr) && altAt(lat, d, 0) > DEPTH.sunrise;
+  return [
+    { id: 'fajr', name: 'Фаджр', ar: 'الفجر', t: 12 - hf, why: isNaN(hf) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.fajrA).replace('.', ',') + '°') : '' },
+    { id: 'sunrise', name: 'Восход', ar: 'الشروق', t: 12 - hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
+    { id: 'dhuhr', name: 'Зухр', ar: 'الظهر', t: 12 + 2 / 60, why: '' },
+    { id: 'asr', name: 'Аср', ar: 'العصر', t: 12 + ha, why: isNaN(ha) ? 'тень не достигает нужной длины' : '' },
+    { id: 'maghrib', name: 'Магриб', ar: 'المغرب', t: 12 + hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
+    { id: 'isha', name: 'Иша', ar: 'العشاء', t: 12 + hi, why: isNaN(hi) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.ishaA).replace('.', ',') + '°') : '' }
+  ];
+}
+
+function phaseOf(alt) {
+  if (alt > -0.833) return { name: 'День', color: 'var(--day)' };
+  if (alt > -6) return { name: 'Гражданские сумерки', color: 'var(--civil)' };
+  if (alt > -12) return { name: 'Навигационные сумерки', color: 'var(--naut)' };
+  if (alt > -18) return { name: 'Астрономические сумерки', color: 'var(--astro)' };
+  return { name: 'Ночь', color: '#59628A' };
+}
+
+/* ================= Colors from tokens ================= */
+let C = {};
+function readTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  C = { ink: g('--ink'), muted: g('--muted'), line: g('--line'), surface: g('--surface'), sunken: g('--sunken'), bg: g('--bg'),
+        accent: g('--accent'), day: g('--day'), civil: g('--civil'), naut: g('--naut'), astro: g('--astro'), night: g('--night') };
+}
+readTokens();
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const els = {
+  city: $('city'), lat: $('lat'), latOut: $('latOut'), day: $('day'), dayOut: $('dayOut'),
+  time: $('time'), timeOut: $('timeOut'), play: $('play'), speed: $('speed'), compare: $('compare'),
+  facts: $('facts'), alert: $('alert'), prayTable: $('prayTable'), prayHead: $('prayHead'),
+  hudClock: $('hudClock'), hudPhase: $('hudPhase'), camSeg: $('camSeg'), labels: $('labels'), viewport: $('viewport')
+};
+CITIES.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name + (c.lat != null ? ' · ' + fmtDeg(c.lat) : ''); els.city.appendChild(o); });
+
+/* ================= 3D ================= */
+const has3D = typeof THREE !== 'undefined';
+let renderer, camera, controls, skyScene, earthScene, sky = {}, earth = {};
+const R = 10;
+
+function hex(c) { return new THREE.Color(c); }
+const BAND_HEX = () => ({ day: hex(C.day), civil: hex(C.civil), naut: hex(C.naut), astro: hex(C.astro), deep: hex('#59628A') });
+function bandColor(alt, B) { return alt > 0 ? B.day : alt > -6 ? B.civil : alt > -12 ? B.naut : alt > -18 ? B.astro : B.deep; }
+
+function makeStars(n, r) {
+  const g = new THREE.BufferGeometry(), p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    p[i * 3] = r * s * cos(th); p[i * 3 + 1] = r * u; p[i * 3 + 2] = r * s * sin(th);
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  return new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc8d0ff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: .7 }));
+}
+function ringLine(radius, y, color, opacity, dashed) {
+  const pts = [];
+  for (let i = 0; i <= 128; i++) { const a = i / 128 * Math.PI * 2; pts.push(new THREE.Vector3(radius * cos(a), y, radius * sin(a))); }
+  const g = new THREE.BufferGeometry().setFromPoints(pts);
+  const m = dashed ? new THREE.LineDashedMaterial({ color, transparent: true, opacity, dashSize: .3, gapSize: .2 })
+                   : new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+  const l = new THREE.Line(g, m); if (dashed) l.computeLineDistances(); return l;
+}
+function glowSprite(color, size) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.2, color); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  s.scale.set(size, size, 1); return s;
+}
+
+/* ---- labels overlay ---- */
+const labels = [];
+function addLabel(text, cls, scene, getPos, visible) {
+  const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.textContent = text;
+  els.labels.appendChild(el);
+  const L = { el, scene, getPos, visible: visible || (() => true) }; labels.push(L); return L;
+}
+const tmpV = has3D ? new THREE.Vector3() : null;
+function updateLabels() {
+  const w = els.viewport.clientWidth, h = els.viewport.clientHeight;
+  for (const L of labels) {
+    let show = L.scene === S.view && L.visible();
+    if (show) {
+      L.getPos(tmpV); tmpV.project(camera);
+      if (tmpV.z > 1 || tmpV.z < -1) show = false;
+      else L.el.style.transform = `translate(${(tmpV.x * .5 + .5) * w}px, ${(-tmpV.y * .5 + .5) * h}px) translate(-50%, -130%)`;
+    }
+    L.el.hidden = !show;
+  }
+}
+
+function initSky() {
+  const sc = new THREE.Scene(); skyScene = sc;
+  sc.add(makeStars(1400, 400));
+  // celestial sphere shell, coloured by altitude
+  sky.domeMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: {
+      sunAlt: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) },
+      cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) },
+      cNight: { value: hex('#0a1030') }, cDay: { value: hex('#5d9be0') }, cDusk: { value: hex('#ff9a55') }
+    },
+    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `
+      uniform float sunAlt; uniform vec3 sunDir; uniform vec3 cCivil, cNaut, cAstro, cNight, cDay, cDusk;
+      varying vec3 vP;
+      void main(){
+        vec3 p = normalize(vP); float a = degrees(asin(clamp(p.y,-1.0,1.0)));
+        vec4 col;
+        if (a >= 0.0) {
+          float day = smoothstep(-4.0, 8.0, sunAlt);
+          float tw = smoothstep(-19.0, -1.0, sunAlt) * (1.0 - day);
+          float near = pow(max(dot(normalize(vec3(p.x,0.0,p.z)), normalize(vec3(sunDir.x,0.0,sunDir.z))),0.0), 4.0);
+          vec3 c = mix(cNight, cDay, day);
+          c += cDusk * tw * (0.15 + near * 0.9) * exp(-a / 14.0);
+          col = vec4(c, 0.10 + 0.30 * day + 0.25 * tw * exp(-a/14.0));
+        } else if (a > -6.0)  col = vec4(cCivil, 0.30);
+        else if (a > -12.0)   col = vec4(cNaut, 0.30);
+        else if (a > -18.0)   col = vec4(cAstro, 0.36);
+        else                  col = vec4(cNight, 0.20);
+        gl_FragColor = col;
+      }`
+  });
+  sc.add(new THREE.Mesh(new THREE.SphereGeometry(R, 96, 64), sky.domeMat));
+  // ground
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshBasicMaterial({ color: 0x24312a, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide }));
+  ground.rotation.x = -Math.PI / 2; sc.add(ground);
+  sc.add(ringLine(R, 0.01, 0xe8eaf4, .9));
+  for (const h of [-6, -12, -18]) sc.add(ringLine(R * cos(h * D2R), R * sin(h * D2R), 0xb9c1ea, .35));
+  // meridian arc + prime vertical faint
+  const mer = []; for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI; mer.push(new THREE.Vector3(0, R * sin(a), R * cos(a))); }
+  sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mer), new THREE.LineBasicMaterial({ color: 0x8a93c0, transparent: true, opacity: .25 })));
+  // cardinal labels
+  const card = [['С', 0, 0, -1], ['В', 1, 0, 0], ['Ю', 0, 0, 1], ['З', -1, 0, 0]];
+  for (const [t, x, y, z] of card) addLabel(t, '', 'sky', v => v.set(x * R * 1.06, 0.2, z * R * 1.06));
+  for (const h of [-6, -12, -18]) addLabel(h.toString().replace('-', '−') + '°', 'plain', 'sky', v => v.set(0, R * sin(h * D2R) + .1, R * cos(h * D2R) * 1.02), () => S.cam !== 'eye');
+  addLabel('горизонт', 'plain', 'sky', v => v.set(-R * .72, 0.15, R * .72), () => S.cam !== 'eye');
+
+  // observer and gnomon
+  const obs = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.13, .17, .7, 16), new THREE.MeshBasicMaterial({ color: 0xd7dcf0 }));
+  body.position.y = .35; obs.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.12, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd7dcf0 }));
+  head.position.y = .82; obs.add(head);
+  sc.add(obs);
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, 1, 8), new THREE.MeshBasicMaterial({ color: 0xffd9a8 }));
+  stick.position.set(.9, .5, .4); sc.add(stick);
+  sky.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, .07), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .75, side: THREE.DoubleSide }));
+  sky.shadow.rotation.x = -Math.PI / 2; sky.shadow.position.y = .015; sc.add(sky.shadow);
+  sky.stickBase = new THREE.Vector3(.9, 0, .4);
+  addLabel('шест 1 м', 'plain', 'sky', v => v.set(.9, 1.15, .4), () => S.cam === 'close');
+
+  // celestial pole axis
+  sky.axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]), new THREE.LineDashedMaterial({ color: 0x9fb0ff, dashSize: .35, gapSize: .25, transparent: true, opacity: .7 }));
+  sc.add(sky.axis);
+  sky.axisLbl = addLabel('к Полярной звезде', 'plain', 'sky', v => v.copy(sky.axisEnd || v.set(0, 1, 0)));
+
+  // sun
+  sky.sun = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+  sky.glow = glowSprite('rgba(255,190,90,.6)', 3.2); sky.sun.add(sky.glow); sc.add(sky.sun);
+  sky.sunLbl = addLabel('Солнце', '', 'sky', v => v.copy(sky.sun.position));
+
+  sky.pathGroup = new THREE.Group(); sc.add(sky.pathGroup);
+  sky.prayerMarkers = new THREE.Group(); sc.add(sky.prayerMarkers);
+  sky.prayerLabels = [];
+  for (const id of ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha']) {
+    const nm = { fajr: 'Фаджр', sunrise: 'Восход', dhuhr: 'Зухр', asr: 'Аср', maghrib: 'Магриб', isha: 'Иша' }[id];
+    const L = addLabel(nm, 'pray', 'sky', v => v.copy(L.pos), () => L.ok && S.cam !== 'eye'); L.pos = new THREE.Vector3(); L.id = id; sky.prayerLabels.push(L);
+  }
+  sky.lowLbl = addLabel('', 'plain', 'sky', v => v.copy(sky.lowPos), () => S.cam !== 'eye' && sky.lowPos);
+}
+
+function rebuildSkyPath() {
+  const g = sky.pathGroup; while (g.children.length) { const c = g.children.pop(); c.geometry.dispose(); }
+  const d = dec(), B = BAND_HEX();
+  const pts = [];
+  for (let i = 0; i < 240; i++) { const H = (i / 240) * Math.PI * 2 - Math.PI; const v = sunVec(S.lat, d, H); pts.push(new THREE.Vector3(v[0] * R, v[1] * R, v[2] * R)); }
+  const curve = new THREE.CatmullRomCurve3(pts, true);
+  const tube = new THREE.TubeGeometry(curve, 480, .07, 6, true);
+  const pos = tube.attributes.position, col = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const alt = Math.asin(Math.max(-1, Math.min(1, pos.getY(i) / R))) * R2D;
+    const c = bandColor(alt, B); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  tube.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ vertexColors: true })));
+  if (S.compare && S.lat > 1) {
+    const ep = [];
+    for (let i = 0; i <= 200; i++) { const H = (i / 200) * Math.PI * 2 - Math.PI; const v = sunVec(0, d, H); ep.push(new THREE.Vector3(v[0] * R, v[1] * R, v[2] * R)); }
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ep), new THREE.LineDashedMaterial({ color: 0xffffff, transparent: true, opacity: .55, dashSize: .35, gapSize: .25 }));
+    l.computeLineDistances(); g.add(l);
+  }
+  // axis
+  const ax = new THREE.Vector3(0, sin(S.lat * D2R), -cos(S.lat * D2R)).multiplyScalar(R * 1.15);
+  sky.axis.geometry.setFromPoints([ax.clone().multiplyScalar(-1), ax]); sky.axis.computeLineDistances();
+  sky.axisEnd = ax;
+  // prayer markers
+  const pm = sky.prayerMarkers; while (pm.children.length) pm.remove(pm.children[0]);
+  const P = prayerTimes();
+  for (const L of sky.prayerLabels) {
+    const p = P.find(x => x.id === L.id); L.ok = isFinite(p.t);
+    if (!L.ok) continue;
+    const v = sunVec(S.lat, d, (p.t - 12) * 15 * D2R); L.pos.set(v[0] * R, v[1] * R, v[2] * R);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1df }));
+    m.position.copy(L.pos); pm.add(m);
+  }
+  const lowAlt = altAt(S.lat, d, 0);
+  const lv = sunVec(S.lat, d, Math.PI);
+  sky.lowPos = new THREE.Vector3(lv[0] * R, lv[1] * R - .25, lv[2] * R);
+  sky.lowLbl.el.textContent = 'полночь: ' + fmtDeg(lowAlt);
+}
+
+function initEarth() {
+  const sc = new THREE.Scene(); earthScene = sc;
+  sc.add(makeStars(1800, 400));
+  const ER = 5; earth.R = ER;
+  earth.tilt = new THREE.Group(); sc.add(earth.tilt);
+  earth.mat = new THREE.ShaderMaterial({
+    extensions: { derivatives: true },
+    uniforms: {
+      sunDir: { value: new THREE.Vector3(1, 0, 0) },
+      cDay: { value: hex('#3f7fc4') }, cDayLow: { value: hex('#7aa7c9') },
+      cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) }, cNight: { value: hex('#0b1026') }
+    },
+    vertexShader: 'varying vec3 vN; varying vec3 vL; void main(){ vN = normalize(mat3(modelMatrix) * normal); vL = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `
+      uniform vec3 sunDir, cDay, cDayLow, cCivil, cNaut, cAstro, cNight;
+      varying vec3 vN; varying vec3 vL;
+      float grid(float v, float step){ float f = abs(fract(v/step + 0.5) - 0.5) * step; float w = fwidth(v) * 0.8; return 1.0 - smoothstep(0.0, w, f); }
+      void main(){
+        vec3 n = normalize(vN); float s = dot(n, sunDir);
+        float alt = degrees(asin(clamp(s,-1.0,1.0)));
+        vec3 col;
+        if (alt > 0.0) col = mix(cDayLow, cDay, smoothstep(0.0, 25.0, alt)) * (0.75 + 0.35 * s);
+        else if (alt > -6.0) col = cCivil * 0.95;
+        else if (alt > -12.0) col = cNaut * 0.9;
+        else if (alt > -18.0) col = cAstro * 0.95;
+        else col = cNight;
+        vec3 p = normalize(vL);
+        float lat = degrees(asin(p.y)); float lon = degrees(atan(p.z, p.x));
+        float g = max(grid(lat, 15.0), grid(lon, 15.0) * step(abs(lat), 80.0));
+        float eq = 1.0 - smoothstep(0.0, fwidth(lat) * 1.6, abs(lat));
+        col = mix(col, vec3(1.0), g * 0.13 + eq * 0.25);
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  });
+  earth.mesh = new THREE.Mesh(new THREE.SphereGeometry(ER, 128, 96), earth.mat);
+  earth.tilt.add(earth.mesh);
+  // axis
+  const axG = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -ER * 1.35, 0), new THREE.Vector3(0, ER * 1.35, 0)]);
+  earth.tilt.add(new THREE.Line(axG, new THREE.LineBasicMaterial({ color: 0xc9d1ff, transparent: true, opacity: .6 })));
+  addLabel('Северный полюс', 'plain', 'earth', v => { v.set(0, ER * 1.42, 0); earth.tilt.localToWorld(v); });
+  // observer pin + local horizon disk
+  earth.pin = new THREE.Group();
+  const pinMesh = new THREE.Mesh(new THREE.ConeGeometry(.1, .35, 12), new THREE.MeshBasicMaterial({ color: 0xffb36b }));
+  pinMesh.position.y = .17; earth.pin.add(pinMesh);
+  const disk = new THREE.Mesh(new THREE.CircleGeometry(.75, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .22, side: THREE.DoubleSide, depthWrite: false }));
+  disk.rotation.x = -Math.PI / 2; disk.position.y = .02; earth.pin.add(disk);
+  earth.mesh.add(earth.pin);
+  earth.youLbl = addLabel('Вы здесь', 'you', 'earth', v => { v.set(0, .45, 0); earth.pin.localToWorld(v); });
+  // parallel ring
+  earth.ringHolder = new THREE.Group(); earth.tilt.add(earth.ringHolder);
+  // band boundary circles (world, around sun axis)
+  const names = { 0: '0°', '-6': '−6°', '-12': '−12°', '-18': '−18°' }, tilt = { 0: 8, '-6': 16, '-12': 24, '-18': 32 };
+  for (const h of [0, -6, -12, -18]) {
+    const pts = []; const rr = ER * 1.006;
+    for (let i = 0; i <= 160; i++) { const a = i / 160 * Math.PI * 2; pts.push(new THREE.Vector3(rr * sin(h * D2R), rr * cos(h * D2R) * cos(a), rr * cos(h * D2R) * sin(a))); }
+    sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: h === 0 ? .5 : .28 })));
+    const a = tilt[h] * D2R; addLabel(names[h], 'plain', 'earth', v => v.set(rr * sin(h * D2R), -rr * cos(h * D2R) * sin(a), rr * cos(h * D2R) * cos(a)).multiplyScalar(1.04), () => S.cam !== 'follow');
+  }
+  // sunlight arrows
+  for (const [y, z] of [[2.5, 2.5], [-2.5, 2.5], [2.5, -2.5], [-2.5, -2.5], [0, 3.5], [0, -3.5], [3.5, 0], [-3.5, 0]]) {
+    sc.add(new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(15, y, z), 6, 0xffd27a, .6, .35));
+  }
+  addLabel('свет Солнца', 'plain', 'earth', v => v.set(13, 4.2, 0));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(2.4, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+  sun.position.set(70, 0, 0); sun.add(glowSprite('rgba(255,190,90,.7)', 18)); sc.add(sun);
+}
+
+function rebuildEarthRing() {
+  const h = earth.ringHolder; while (h.children.length) { const c = h.children.pop(); c.geometry.dispose(); }
+  const d = dec(), B = BAND_HEX(), ER = earth.R * 1.012, f = S.lat * D2R;
+  const pts = [];
+  for (let i = 0; i < 200; i++) { const a = i / 200 * Math.PI * 2; pts.push(new THREE.Vector3(ER * cos(f) * cos(a), ER * sin(f), -ER * cos(f) * sin(a))); }
+  const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 400, .065, 6, true);
+  const pos = tube.attributes.position, col = new Float32Array(pos.count * 3), sd = new THREE.Vector3(cos(d * D2R), sin(d * D2R), 0);
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize();
+    const c = bandColor(Math.asin(v.dot(sd)) * R2D, B);
+    const k = .9; col[i * 3] = c.r * k + (1 - k); col[i * 3 + 1] = c.g * k + (1 - k); col[i * 3 + 2] = c.b * k + (1 - k);
+  }
+  tube.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  h.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ vertexColors: true })));
+  earth.tilt.rotation.z = -d * D2R;
+  earth.pin.position.set(earth.R * cos(f), earth.R * sin(f), 0);
+  earth.pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(cos(f), sin(f), 0));
+  const c = city(); earth.youLbl.el.textContent = (c && c.lat != null && c.id !== 'equator' ? c.name : 'Вы здесь');
+}
+
+/* ---- cameras ---- */
+const CAMS = {
+  sky: [
+    { id: 'overview', name: 'Общий вид' },
+    { id: 'side', name: 'Сбоку' },
+    { id: 'top', name: 'Сверху' },
+    { id: 'eye', name: 'Глазами человека' },
+    { id: 'close', name: 'Тень шеста' }
+  ],
+  earth: [
+    { id: 'terminator', name: 'Граница дня и ночи' },
+    { id: 'pole', name: 'Над полюсом' },
+    { id: 'sunview', name: 'Со стороны Солнца' },
+    { id: 'follow', name: 'Следом за городом' }
+  ]
+};
+function camPose(id) {
+  const lat = S.lat * D2R;
+  switch (id) {
+    case 'overview': return { pos: [16, 9.5, 17], target: [0, -1.2, 0], fov: 45 };
+    case 'side': return { pos: [62, 0, 0], target: [0, -1.5, 0], fov: 25 };
+    case 'top': return { pos: [0, 30, .01], target: [0, 0, 0], fov: 45 };
+    case 'close': return { pos: [3.8, 2.6, 4.2], target: [.6, .3, .3], fov: 45 };
+    case 'eye': return { pos: [0, .9, 0], target: null, fov: 70 };
+    case 'terminator': return { pos: [-4, 11, 16], target: [0, 0, 0], fov: 40 };
+    case 'pole': { const d = dec() * D2R; return { pos: [sin(d) * 22, cos(d) * 22, .01], target: [0, 0, 0], fov: 40 }; }
+    case 'sunview': return { pos: [24, 3, 0], target: [0, 0, 0], fov: 40 };
+    case 'follow': return { pos: null, target: null, fov: 45 };
+  }
+}
+let tween = null;
+const eye = { yaw: 0, pitch: 4 };
+function setCam(id, instant) {
+  S.cam = id;
+  [...els.camSeg.children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === id)));
+  if (!has3D) return;
+  const p = camPose(id);
+  controls.enabled = !(id === 'eye' || id === 'follow');
+  if (id === 'eye') {
+    const pr = prayerTimes(); const ref = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R);
+    eye.yaw = Math.atan2(ref[0], -ref[2]); eye.pitch = 6;
+  }
+  if (id === 'follow' || id === 'eye') { tween = { mode: id, t0: performance.now(), dur: instant ? 0 : 900, from: camera.position.clone(), fromT: controls.target.clone(), fov0: camera.fov, fov1: p.fov }; return; }
+  const to = new THREE.Vector3(...p.pos), tgt = new THREE.Vector3(...p.target);
+  if (camera.aspect < 1) to.sub(tgt).multiplyScalar(Math.min(1.9, 1 / camera.aspect)).add(tgt); // narrow screens: step back
+  tween = { t0: performance.now(), dur: instant || reduceMotion ? 0 : 1000, from: camera.position.clone(), to,
+            fromT: controls.target.clone(), toT: tgt, fov0: camera.fov, fov1: p.fov };
+}
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function eyeTarget(out) {
+  const y = eye.yaw, p = eye.pitch * D2R;
+  return out.set(sin(y) * cos(p), sin(p), -cos(y) * cos(p)).multiplyScalar(5).add(new THREE.Vector3(0, .9, 0));
+}
+function followPose(outPos, outT) {
+  const w = new THREE.Vector3(); earth.pin.getWorldPosition(w);
+  const n = w.clone().normalize();
+  const ax = new THREE.Vector3(0, 1, 0).applyQuaternion(earth.tilt.quaternion);
+  const east = ax.clone().cross(n).normalize();
+  outPos.copy(w).add(n.clone().multiplyScalar(5.5)).add(east.clone().multiplyScalar(-6)).add(ax.clone().multiplyScalar(2));
+  outT.copy(w);
+}
+function stepCamera(now) {
+  if (!tween) {
+    if (S.cam === 'eye') { camera.position.set(0, .9, 0); camera.lookAt(eyeTarget(tmpV)); }
+    else if (S.cam === 'follow') { const p = new THREE.Vector3(), t = new THREE.Vector3(); followPose(p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
+    return;
+  }
+  const k = tween.dur ? Math.min(1, (now - tween.t0) / tween.dur) : 1, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  let to, toT;
+  if (tween.mode === 'eye') { to = new THREE.Vector3(0, .9, 0); toT = eyeTarget(new THREE.Vector3()); }
+  else if (tween.mode === 'follow') { to = new THREE.Vector3(); toT = new THREE.Vector3(); followPose(to, toT); }
+  else { to = tween.to; toT = tween.toT; }
+  camera.position.lerpVectors(tween.from, to, e);
+  controls.target.lerpVectors(tween.fromT, toT, e);
+  camera.fov = tween.fov0 + (tween.fov1 - tween.fov0) * e; camera.updateProjectionMatrix();
+  camera.lookAt(controls.target);
+  if (k >= 1) { const m = tween.mode; tween = null; if (!m) controls.update(); }
+}
+
+function buildCamButtons() {
+  els.camSeg.innerHTML = '';
+  for (const c of CAMS[S.view]) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.cam = c.id; b.textContent = c.name;
+    b.setAttribute('aria-pressed', String(c.id === S.cam));
+    b.addEventListener('click', () => setCam(c.id));
+    els.camSeg.appendChild(b);
+  }
+}
+function setView(v, cam, instant) {
+  S.view = v;
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  S.cam = cam || CAMS[v][0].id;
+  buildCamButtons();
+  setCam(S.cam, instant);
+}
+
+function init3D() {
+  if (!has3D) {
+    els.viewport.insertAdjacentHTML('beforeend', '<p style="position:absolute;inset:auto 16px 50% 16px;text-align:center;color:var(--space-muted)">3D‑модель не загрузилась: нет доступа к библиотеке three.js. Графики ниже работают.</p>');
+    return;
+  }
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setClearColor(0x060914, 1);
+  renderer.domElement.className = 'gl';
+  els.viewport.insertBefore(renderer.domElement, els.viewport.firstChild);
+  camera = new THREE.PerspectiveCamera(45, 1, .05, 2000);
+  camera.position.set(16, 9.5, 17);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = .08; controls.minDistance = 2; controls.maxDistance = 120;
+  controls.target.set(0, -1.2, 0);
+  initSky(); initEarth();
+  // drag to look around in eye mode
+  let drag = null;
+  renderer.domElement.addEventListener('pointerdown', e => { if (S.cam === 'eye') { drag = { x: e.clientX, y: e.clientY, yaw: eye.yaw, pitch: eye.pitch }; renderer.domElement.setPointerCapture(e.pointerId); } });
+  renderer.domElement.addEventListener('pointermove', e => { if (drag) { eye.yaw = drag.yaw - (e.clientX - drag.x) * .005; eye.pitch = Math.max(-40, Math.min(80, drag.pitch + (e.clientY - drag.y) * .25)); } });
+  renderer.domElement.addEventListener('pointerup', () => { drag = null; });
+  // leaving a fixed camera by dragging
+  controls.addEventListener('start', () => { tween = null; });
+  const ro = new ResizeObserver(resize); ro.observe(els.viewport); resize();
+}
+function resize() {
+  if (!renderer) return;
+  const w = els.viewport.clientWidth, h = els.viewport.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+
+function updateTime3D() {
+  if (!has3D) return;
+  const d = dec(), t = toSolar(S.T), H = (t - 12) * 15 * D2R;
+  const v = sunVec(S.lat, d, H);
+  const alt = Math.asin(v[1]) * R2D;
+  sky.sun.position.set(v[0] * R, v[1] * R, v[2] * R);
+  sky.domeMat.uniforms.sunAlt.value = alt;
+  sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
+  if (alt > 0.5) {
+    const len = Math.min(6, 1 / Math.tan(alt * D2R));
+    const dir = new THREE.Vector3(-v[0], 0, -v[2]).normalize();
+    sky.shadow.visible = true; sky.shadow.scale.x = len;
+    sky.shadow.position.copy(sky.stickBase).addScaledVector(dir, len / 2); sky.shadow.position.y = .015;
+    sky.shadow.rotation.set(-Math.PI / 2, 0, Math.atan2(dir.z, dir.x));
+  } else sky.shadow.visible = false;
+  sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
+  earth.mesh.rotation.y = H;
+}
+
+/* ================= Panel ================= */
+function updatePanelStatic() {
+  const c = city(), d = dec(), lat = S.lat;
+  els.latOut.textContent = fmtDeg(lat) + ' с. ш.';
+  els.dayOut.textContent = dateLabel(S.N);
+  const P = prayerTimes();
+  const isSolar = !c || c.lon == null;
+  els.prayHead.textContent = 'Время намазов' + (isSolar ? ' (солнечное время)' : ' (местное время, UTC+' + c.tz + ')');
+  els.prayTable.innerHTML = P.map(p => `<tr data-id="${p.id}"><td>${p.name}<span class="ar" lang="ar">${p.ar}</span>${p.why ? `<span class="why">${p.why}</span>` : ''}</td><td>${fmtHM(toClock(p.t))}</td></tr>`).join('');
+  const hr = hoursFor(lat, d, DEPTH.sunrise), hi = hoursFor(lat, d, -18);
+  const low = altAt(lat, d, 0);
+  const setAngle = Math.acos(Math.min(1, sin(lat * D2R) / cos(d * D2R))) * R2D;
+  const rows = [
+    ['Солнце в полночь', fmtDeg(low)],
+    ['Наклон пути к горизонту', isNaN(hr) ? '—' : fmtDeg(setAngle, 0)],
+    ['Закат → конец сумерек (−18°)', isNaN(hr) ? '—' : isNaN(hi) ? 'не кончаются' : fmtDur(hi - hr)],
+    ['Начало фаджра → восход', isNaN(hr) ? '—' : isNaN(hi) ? 'нет начала' : fmtDur(hi - hr)]
+  ];
+  els.facts.innerHTML = rows.map(r => `<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('');
+  let msg = '';
+  if (isNaN(hr) && low > 0) msg = 'Полярный день: Солнце не заходит за горизонт.';
+  else if (isNaN(hr)) msg = 'Полярная ночь: Солнце не поднимается над горизонтом.';
+  else if (low > -18) msg = `В эту ночь Солнце опускается только до ${fmtDeg(low)}. До −18° оно не доходит, сумерки не исчезают всю ночь, вечерние переходят в утренние.`;
+  els.alert.hidden = !msg; els.alert.textContent = msg;
+}
+function updatePanelTime() {
+  const t = toSolar(S.T), alt = altAt(S.lat, dec(), t);
+  const c = city(); const isSolar = !c || c.lon == null;
+  els.timeOut.textContent = fmtHM(S.T);
+  els.time.value = S.T;
+  els.hudClock.innerHTML = fmtHM(S.T) + `<small>${isSolar ? 'солнечное' : c.name}, ${dateLabel(S.N)}</small>`;
+  const ph = phaseOf(alt);
+  els.hudPhase.querySelector('i').style.background = ph.color;
+  els.hudPhase.querySelector('span').textContent = ph.name + ' · Солнце ' + fmtDeg(alt);
+  // highlight the current prayer period
+  const tt = ((t % 24) + 24) % 24;
+  const P = prayerTimes().filter(p => isFinite(p.t)).sort((a, b) => a.t - b.t);
+  let cur = P.length ? P[P.length - 1].id : null;
+  for (const p of P) if (tt >= p.t) cur = p.id;
+  if (cur === 'sunrise') cur = null;
+  els.prayTable.querySelectorAll('tr').forEach(tr => tr.classList.toggle('now', tr.dataset.id === cur));
+  drawDayChart();
+}
+
+/* ================= Charts ================= */
+function prepCanvas(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth || 300, h = +cv.getAttribute('height');
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px'; }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+  return { x, w, h };
+}
+function bandFill(x, X0, X1, yOf, alpha) {
+  const bands = [[90, -0.833, C.day], [-0.833, -6, C.civil], [-6, -12, C.naut], [-12, -18, C.astro]];
+  x.save(); x.globalAlpha = alpha;
+  for (const [a, b, c] of bands) { x.fillStyle = c; const y0 = yOf(a), y1 = yOf(b); x.fillRect(X0, Math.min(y0, y1), X1 - X0, Math.abs(y1 - y0)); }
+  x.restore();
+}
+
+const dayCv = $('dayChart');
+function drawDayChart() {
+  const { x, w, h } = prepCanvas(dayCv);
+  const L = 30, Rr = 6, T = 6, B = 20;
+  const yMin = -60, yMax = 80;
+  const X = t => L + (t / 24) * (w - L - Rr), Y = a => T + (yMax - Math.max(yMin, Math.min(yMax, a))) / (yMax - yMin) * (h - T - B);
+  const yOf = a => Y(a);
+  bandFill(x, L, w - Rr, yOf, .22);
+  x.font = '10px ' + getComputedStyle(document.body).fontFamily; x.fillStyle = C.muted; x.textAlign = 'right'; x.textBaseline = 'middle';
+  for (const a of [60, 30, 0, -18, -45]) { x.fillText(String(a).replace('-', '−') + '°', L - 4, Y(a)); x.strokeStyle = C.line; x.globalAlpha = .7; x.beginPath(); x.moveTo(L, Y(a)); x.lineTo(w - Rr, Y(a)); x.stroke(); x.globalAlpha = 1; }
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  for (let t = 0; t <= 24; t += 6) x.fillText(String(t).padStart(2, '0') + ':00', Math.min(w - 16, Math.max(L + 12, X(t))), h - 5);
+  const d = dec();
+  if (S.compare && S.lat > 1) {
+    x.setLineDash([4, 3]); x.strokeStyle = C.muted; x.lineWidth = 1.2; x.beginPath();
+    for (let i = 0; i <= 240; i++) { const T2 = i / 10, a = altAt(0, d, toSolar(T2)); i ? x.lineTo(X(T2), Y(a)) : x.moveTo(X(T2), Y(a)); }
+    x.stroke(); x.setLineDash([]);
+  }
+  x.strokeStyle = C.ink; x.lineWidth = 2; x.beginPath();
+  for (let i = 0; i <= 240; i++) { const T2 = i / 10, a = altAt(S.lat, d, toSolar(T2)); i ? x.lineTo(X(T2), Y(a)) : x.moveTo(X(T2), Y(a)); }
+  x.stroke();
+  // prayers
+  for (const p of prayerTimes()) {
+    if (!isFinite(p.t) || p.id === 'sunrise') continue;
+    const T2 = ((toClock(p.t) % 24) + 24) % 24, a = altAt(S.lat, d, p.t);
+    x.fillStyle = C.accent; x.beginPath(); x.arc(X(T2), Y(a), 3.2, 0, Math.PI * 2); x.fill();
+  }
+  // cursor
+  const a = altAt(S.lat, d, toSolar(S.T));
+  x.strokeStyle = C.accent; x.lineWidth = 1; x.beginPath(); x.moveTo(X(S.T), T); x.lineTo(X(S.T), h - B); x.stroke();
+  x.fillStyle = C.surface; x.strokeStyle = C.accent; x.lineWidth = 2; x.beginPath(); x.arc(X(S.T), Y(a), 5, 0, Math.PI * 2); x.fill(); x.stroke();
+  dayCv._X = { L, Rr, w };
+}
+(function dayChartDrag() {
+  let on = false;
+  const set = e => { const r = dayCv.getBoundingClientRect(), g = dayCv._X; if (!g) return; const t = (e.clientX - r.left - g.L) / (g.w - g.L - g.Rr) * 24; S.T = Math.max(0, Math.min(23.99, t)); onTime(); };
+  dayCv.addEventListener('pointerdown', e => { on = true; dayCv.setPointerCapture(e.pointerId); set(e); });
+  dayCv.addEventListener('pointermove', e => { if (on) set(e); });
+  dayCv.addEventListener('pointerup', () => { on = false; });
+  dayCv.style.cursor = 'pointer'; dayCv.style.touchAction = 'none';
+})();
+
+const raceCv = $('raceChart');
+function raceSeries() {
+  const c = city();
+  const list = [{ name: 'Экватор', lat: 0, color: C.muted, dash: [5, 4] }, { name: 'Мекка', lat: 21.42, color: C.naut, dash: [] }];
+  if (S.lat > 25) list.push({ name: c && c.lat != null && c.id !== 'custom' ? c.name : 'Широта ' + fmtDeg(S.lat), lat: S.lat, color: C.accent, dash: [], bold: true });
+  else if (Math.abs(S.lat - 21.42) > .5 && S.lat > 1) list.push({ name: 'Широта ' + fmtDeg(S.lat), lat: S.lat, color: C.accent, dash: [], bold: true });
+  return list;
+}
+function drawRace() {
+  const { x, w, h } = prepCanvas(raceCv);
+  const L = 38, Rr = 12, T = 14, B = 28, maxM = 300, yMin = -26;
+  const X = m => L + m / maxM * (w - L - Rr), Y = a => T + (0 - a) / (0 - yMin) * (h - T - B);
+  bandFill(x, L, w - Rr, a => Y(Math.min(0, Math.max(yMin, a))), .18);
+  const font = getComputedStyle(document.body).fontFamily;
+  x.font = '11px ' + font; x.fillStyle = C.muted; x.textAlign = 'right'; x.textBaseline = 'middle';
+  for (const a of [0, -6, -12, -18, -24]) { x.fillText(String(a).replace('-', '−') + '°', L - 5, Y(a)); }
+  x.strokeStyle = C.ink; x.lineWidth = 1; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(L, Y(-18)); x.lineTo(w - Rr, Y(-18)); x.stroke();
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  for (let m = 0; m <= maxM; m += 60) x.fillText(m ? (m / 60) + ' ч' : 'закат', Math.min(w - 18, X(m)), h - 8);
+  // 1.5 h line
+  x.strokeStyle = C.accent; x.globalAlpha = .7; x.beginPath(); x.moveTo(X(90), T); x.lineTo(X(90), h - B); x.stroke(); x.globalAlpha = 1; x.setLineDash([]);
+  x.fillStyle = C.accent; x.textAlign = 'left'; x.font = '600 11px ' + font; x.fillText('1,5 часа', X(90) + 4, T + 10);
+  x.fillStyle = C.ink; x.textAlign = 'right'; x.fillText('−18°: сумерки кончились', w - Rr - 2, Y(-18) - 6);
+  const d = dec();
+  const keys = [];
+  for (const s of raceSeries()) {
+    const hr = hoursFor(s.lat, d, DEPTH.sunrise); if (isNaN(hr)) { keys.push({ ...s, note: 'Солнце не заходит' }); continue; }
+    const t0 = 12 + hr;
+    x.strokeStyle = s.color; x.lineWidth = s.bold ? 3 : 2; x.setLineDash(s.dash); x.beginPath();
+    for (let m = 0; m <= maxM; m += 2) { const a = altAt(s.lat, d, t0 + m / 60); const yy = Y(Math.max(yMin, a)); m ? x.lineTo(X(m), yy) : x.moveTo(X(m), yy); }
+    x.stroke(); x.setLineDash([]);
+    const hi = hoursFor(s.lat, d, -18);
+    let note;
+    if (!isNaN(hi)) {
+      const m = (hi - hr) * 60;
+      if (m <= maxM) { x.fillStyle = s.color; x.beginPath(); x.arc(X(m), Y(-18), 4.5, 0, Math.PI * 2); x.fill(); }
+      note = fmtDur(hi - hr);
+    } else {
+      const low = altAt(s.lat, d, 24); const mLow = (24 - t0) * 60;
+      if (mLow <= maxM) { x.fillStyle = s.color; x.beginPath(); x.arc(X(mLow), Y(low), 4.5, 0, Math.PI * 2); x.fill();
+        x.font = '600 11px ' + font; x.textAlign = 'center'; x.fillText('разворот на ' + fmtDeg(low), X(mLow), Y(low) + 16); }
+      note = 'не доходит до −18°';
+    }
+    keys.push({ ...s, note });
+  }
+  $('raceKeys').innerHTML = keys.map(k => `<span><i style="background:${k.color}"></i>${k.name}: <b class="mono" style="color:var(--ink)">${k.note}</b></span>`).join('');
+  $('raceTitle').textContent = 'После заката, ' + dateLabel(S.N);
+}
+
+const yearCv = $('yearChart');
+function drawYear() {
+  const { x, w, h } = prepCanvas(yearCv);
+  const L = 42, Rr = 10, T = 26, B = 26, maxMin = 300;
+  const X = n => L + (n - 1) / 364 * (w - L - Rr), Y = m => T + (1 - m / maxMin) * (h - T - B);
+  const font = getComputedStyle(document.body).fontFamily;
+  x.font = '11px ' + font; x.fillStyle = C.muted; x.textAlign = 'right'; x.textBaseline = 'middle';
+  for (let m = 0; m <= maxMin; m += 60) { x.fillText(m / 60 + ' ч', L - 6, Y(m)); x.strokeStyle = C.line; x.beginPath(); x.moveTo(L, Y(m)); x.lineTo(w - Rr, Y(m)); x.stroke(); }
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  let acc = 1; for (let i = 0; i < 12; i++) { if (i % 2 === 0 || w > 520) x.fillText(MONTH_SHORT[i], X(acc + 14), h - 8); acc += MDAYS[i]; }
+  // 1.5 h
+  x.strokeStyle = C.accent; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(L, Y(90)); x.lineTo(w - Rr, Y(90)); x.stroke(); x.setLineDash([]);
+  x.fillStyle = C.accent; x.textAlign = 'left'; x.font = '600 11px ' + font; x.fillText('1,5 часа', L + 4, Y(90) - 5);
+  const series = raceSeries();
+  // hatched "never" band at top for main series
+  const main = series[series.length - 1];
+  x.save(); x.beginPath(); x.rect(L, 2, w - L - Rr, T - 6); x.clip();
+  for (let n = 1; n <= 365; n++) {
+    const d = decl(n); if (!isNaN(hoursFor(main.lat, d, DEPTH.sunrise)) && isNaN(hoursFor(main.lat, d, -18))) { x.fillStyle = main.color; x.globalAlpha = .35; x.fillRect(X(n), 2, Math.max(1, (w - L - Rr) / 364 + .5), T - 6); }
+  }
+  x.restore(); x.globalAlpha = 1;
+  for (const s of series) {
+    x.strokeStyle = s.color; x.lineWidth = s.bold ? 3 : 2; x.setLineDash(s.dash); x.beginPath();
+    let pen = false;
+    for (let n = 1; n <= 365; n++) {
+      const d = decl(n), hr = hoursFor(s.lat, d, DEPTH.sunrise), hi = hoursFor(s.lat, d, -18);
+      if (isNaN(hr) || isNaN(hi)) { pen = false; continue; }
+      const m = Math.min(maxMin, (hi - hr) * 60);
+      pen ? x.lineTo(X(n), Y(m)) : x.moveTo(X(n), Y(m)); pen = true;
+    }
+    x.stroke(); x.setLineDash([]);
+  }
+  // today marker
+  x.strokeStyle = C.ink; x.globalAlpha = .5; x.beginPath(); x.moveTo(X(S.N), T); x.lineTo(X(S.N), h - B); x.stroke(); x.globalAlpha = 1;
+  $('yearKeys').innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('') + `<span><i style="background:${main.color};opacity:.35;height:8px"></i>не заканчиваются</span>`;
+}
+
+/* ================= Light pollution ================= */
+const BORTLE_M = [0, 21.9, 21.6, 21.4, 20.9, 20.3, 19.6, 19.0, 18.4, 17.8];
+const BORTLE_NAME = ['', 'Тёмное небо, тайга, степь', 'Очень тёмное небо', 'Сельская местность', 'Деревня, дачи', 'Окраина посёлка', 'Пригород', 'Город', 'Большой город', 'Центр мегаполиса'];
+const mTw = d => 5.4 + d;                 // twilight brightness near the horizon toward the sun, mag/arcsec²
+const visDepth = mbg => mbg + 1.5 - 5.4;  // twilight noticeable while it adds ≥ ~25% over the background
+const lp = { stars: [] };
+(function makeLpStars() { let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 450; i++) lp.stars.push({ x: rnd(), y: rnd(), m: 7.5 - Math.pow(rnd(), 4) * 7.5 }); })();
+
+function renderSky(cv, bortle) {
+  const W = 320, Hh = 180;
+  if (!cv._off) { cv._off = document.createElement('canvas'); cv._off.width = W; cv._off.height = Hh; }
+  const off = cv._off, ox = off.getContext('2d'), img = ox.createImageData(W, Hh), data = img.data;
+  const d = S.depr, mbg = BORTLE_M[bortle];
+  const Bnat = Math.pow(10, -0.4 * 21.9), Bsg0 = Math.max(0, Math.pow(10, -0.4 * mbg) - Bnat), Btw0 = Math.pow(10, -0.4 * mTw(d));
+  const lo = Math.log10(Math.pow(10, -0.4 * 22.4)), hi = Math.log10(Math.pow(10, -0.4 * 11.5));
+  const horizonY = Hh * .82, altSpan = 50, azSpan = 120;
+  const wAlt = 7 + (24 - d) * 0.9, wAz = 28 + (24 - d) * 2.6;
+  for (let j = 0; j < Hh; j++) {
+    const alt = (horizonY - j) / horizonY * altSpan;
+    for (let i = 0; i < W; i++) {
+      const p = (j * W + i) * 4;
+      if (alt < 0) { data[p + 3] = 0; continue; }
+      const az = (i / W - .5) * azSpan;
+      const bn = Bnat * (1 + .6 * Math.exp(-alt / 15));
+      const bs = Bsg0 * (1 + 2.2 * Math.exp(-alt / 10));
+      const bt = Btw0 * Math.exp(-alt / wAlt) * Math.exp(-(az * az) / (wAz * wAz));
+      const tot = bn + bs + bt;
+      let L = (Math.log10(tot) - lo) / (hi - lo); L = Math.max(0, Math.min(1, L));
+      const fn = bn / tot, fs = bs / tot, ft = bt / tot;
+      const warm = Math.max(0, 1 - d / 9);
+      const tr = 120 + 135 * warm, tg = 150 + 80 * warm, tb = 220 - 60 * warm;
+      let r = fn * 40 + fs * 210 + ft * tr, g = fn * 60 + fs * 150 + ft * tg, b = fn * 120 + fs * 100 + ft * tb;
+      const mx = Math.max(r, g, b), v = Math.min(1, L * 1.25) * 255 / mx;
+      data[p] = r * v; data[p + 1] = g * v; data[p + 2] = b * v; data[p + 3] = 255;
+    }
+  }
+  ox.putImageData(img, 0, 0);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = cv.clientWidth || 320, ch = cw * 9 / 16;
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.fillStyle = '#05070f'; x.fillRect(0, 0, cw, ch);
+  x.imageSmoothingEnabled = true; x.drawImage(off, 0, 0, cw, ch);
+  // stars
+  for (const s of lp.stars) {
+    const yy = s.y * ch * .8; const alt = (ch * .82 - yy) / (ch * .82) * altSpan; if (alt < 2) continue;
+    const az = (s.x - .5) * azSpan;
+    const bt = Btw0 * Math.exp(-alt / wAlt) * Math.exp(-(az * az) / (wAz * wAz));
+    const tot = Bnat * (1 + .6 * Math.exp(-alt / 15)) + Bsg0 * (1 + 2.2 * Math.exp(-alt / 10)) + bt;
+    const nelm = -2.5 * Math.log10(tot) - 14.4;
+    const v = nelm - s.m; if (v <= 0) continue;
+    x.fillStyle = `rgba(235,240,255,${Math.min(1, v / 2.5)})`; x.beginPath(); x.arc(s.x * cw, yy, Math.min(1.8, .5 + v * .35), 0, Math.PI * 2); x.fill();
+  }
+  // silhouette
+  const hy = ch * .82;
+  const glow = Math.min(1, Bsg0 / Math.pow(10, -0.4 * 18));
+  x.fillStyle = `rgb(${8 + 20 * glow},${9 + 14 * glow},${14 + 8 * glow})`;
+  x.beginPath(); x.moveTo(0, ch);
+  let rs = bortle * 31 + 3; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  if (bortle <= 3) {
+    for (let i = 0; i <= 60; i++) { const xx = i / 60 * cw; x.lineTo(xx, hy - 4 - 6 * Math.abs(sin(i * .7)) * rnd() - (i % 7 === 0 ? 10 : 0)); }
+  } else {
+    let xx = 0;
+    while (xx < cw) { const bw = cw * (.03 + rnd() * .07); const bh = bortle >= 7 ? ch * (.05 + rnd() * .2) : ch * (.02 + rnd() * .06); x.lineTo(xx, hy - bh); x.lineTo(xx + bw, hy - bh); xx += bw; }
+  }
+  x.lineTo(cw, ch); x.closePath(); x.fill();
+  if (bortle >= 5) {
+    rs = bortle * 7 + 1;
+    x.fillStyle = 'rgba(255,200,120,.75)';
+    for (let i = 0; i < bortle * 18; i++) { const wx = rnd() * cw, wy = hy + 2 - rnd() * ch * (bortle >= 7 ? .2 : .05); x.fillRect(wx, wy, 2, 2); }
+  }
+  x.font = '600 12px ' + getComputedStyle(document.body).fontFamily; x.fillStyle = 'rgba(232,234,244,.85)'; x.textAlign = 'center';
+  x.fillText(S.lpMode === 'dawn' ? 'восток' : 'запад', cw / 2, ch - 8);
+}
+
+function drawLpChart() {
+  const cv = $('lpChart'); const { x, w, h } = prepCanvas(cv);
+  const L = 44, Rr = 12, T = 12, B = 30, dMax = 24, mTop = 8, mBot = 24;
+  const dawn = S.lpMode === 'dawn';
+  const X = d => dawn ? L + (dMax - d) / dMax * (w - L - Rr) : L + d / dMax * (w - L - Rr);
+  const Y = m => T + (m - mTop) / (mBot - mTop) * (h - T - B);
+  const font = getComputedStyle(document.body).fontFamily;
+  x.font = '11px ' + font; x.fillStyle = C.muted; x.textAlign = 'right'; x.textBaseline = 'middle';
+  x.fillText('ярче', L - 6, T + 6); x.fillText('темнее', L - 6, h - B - 6);
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  for (let d = 0; d <= dMax; d += 6) x.fillText('−' + d + '°', X(d), h - 10);
+  // background bands
+  const mb = BORTLE_M[S.bortle], m1 = BORTLE_M[1];
+  x.fillStyle = C.muted; x.globalAlpha = .14; x.fillRect(L, Y(mb + 1.5), w - L - Rr, h - B - Y(mb + 1.5)); x.globalAlpha = 1;
+  x.strokeStyle = C.muted; x.setLineDash([4, 3]); x.beginPath(); x.moveTo(L, Y(m1 + 1.5)); x.lineTo(w - Rr, Y(m1 + 1.5)); x.stroke(); x.setLineDash([]);
+  x.strokeStyle = C.accent; x.beginPath(); x.moveTo(L, Y(mb + 1.5)); x.lineTo(w - Rr, Y(mb + 1.5)); x.stroke();
+  x.textAlign = dawn ? 'left' : 'right'; x.font = '11px ' + font;
+  x.fillStyle = C.muted; x.fillText('порог заметности: тёмное небо', dawn ? L + 4 : w - Rr - 4, Y(m1 + 1.5) + 13);
+  x.fillStyle = C.accent; x.fillText('порог заметности: ' + BORTLE_NAME[S.bortle].toLowerCase(), dawn ? L + 4 : w - Rr - 4, Y(mb + 1.5) - 6);
+  // twilight line
+  x.strokeStyle = C.ink; x.lineWidth = 2.5; x.beginPath(); x.moveTo(X(0), Y(mTw(0))); x.lineTo(X(dMax), Y(Math.min(mBot, mTw(dMax)))); x.stroke(); x.lineWidth = 1;
+  // marks
+  for (const [dd, col] of [[visDepth(m1), C.muted], [visDepth(mb), C.accent]]) {
+    x.fillStyle = col; x.beginPath(); x.arc(X(dd), Y(mTw(dd)), 5, 0, Math.PI * 2); x.fill();
+  }
+  // current depression
+  x.strokeStyle = C.ink; x.globalAlpha = .35; x.beginPath(); x.moveTo(X(S.depr), T); x.lineTo(X(S.depr), h - B); x.stroke(); x.globalAlpha = 1;
+  x.fillStyle = C.ink; x.textAlign = 'left'; x.font = '600 11px ' + font;
+  const lx = X(4), ly = Y(mTw(4)) - 8; x.fillText('свечение зари', Math.min(w - 90, lx + 4), ly);
+}
+
+function updateLp() {
+  $('deprOut').textContent = fmtDeg(-S.depr);
+  $('bortleOut').textContent = S.bortle + ' · ' + BORTLE_NAME[S.bortle];
+  $('skyCityTitle').textContent = BORTLE_NAME[S.bortle];
+  const v1 = visDepth(BORTLE_M[1]), vb = visDepth(BORTLE_M[S.bortle]);
+  const dawn = S.lpMode === 'dawn';
+  const seen1 = dawn ? S.depr <= v1 : S.depr <= v1, seenB = S.depr <= vb;
+  $('skyDarkNote').textContent = seen1 ? (dawn ? 'заря видна' : 'заря ещё видна') : (dawn ? 'зари пока не видно' : 'заря погасла');
+  $('skyCityNote').textContent = seenB ? (dawn ? 'заря видна' : 'заря ещё видна') : (S.depr <= 18 ? (dawn ? 'заря уже есть, но тонет в засветке' : 'заря ещё есть, но не видна') : (dawn ? 'зари пока нет' : 'заря погасла'));
+  renderSky($('skyDark'), 1); renderSky($('skyCity'), S.bortle);
+  drawLpChart();
+  // verdict for selected place/date
+  const d = dec(), hr = hoursFor(S.lat, d, DEPTH.sunrise), h18 = hoursFor(S.lat, d, -18), hv = hoursFor(S.lat, d, -vb);
+  const c = city(); const place = (c && c.lat != null && c.id !== 'custom' && c.id !== 'equator') ? c.name : 'широта ' + fmtDeg(S.lat);
+  let cells;
+  if (dawn) {
+    cells = [
+      [`Рассвет заметен глазом в тёмном месте`, 'при ' + fmtDeg(-v1)],
+      [`…а при засветке «${BORTLE_NAME[S.bortle].toLowerCase()}»`, 'при ' + fmtDeg(-vb), true],
+      [`Начало фаджра (−18°), ${place}, ${dateLabel(S.N)}`, isNaN(h18) ? 'нет' : fmtHM(toClock(12 - h18))],
+      [`Когда рассвет станет виден в таком небе`, isNaN(hv) ? '—' : fmtHM(toClock(12 - hv)) + (isNaN(h18) ? '' : ' (+' + Math.round((h18 - hv) * 60) + ' мин)'), true]
+    ];
+  } else {
+    cells = [
+      [`Заря гаснет для глаза в тёмном месте`, 'при ' + fmtDeg(-v1)],
+      [`…а при засветке «${BORTLE_NAME[S.bortle].toLowerCase()}»`, 'при ' + fmtDeg(-vb), true],
+      [`Конец сумерек (−18°), ${place}, ${dateLabel(S.N)}`, isNaN(h18) ? 'не наступает' : fmtHM(toClock(12 + h18))],
+      [`Когда заря «пропадёт» в таком небе`, isNaN(hv) ? '—' : fmtHM(toClock(12 + hv)) + (isNaN(h18) ? '' : ' (−' + Math.round((h18 - hv) * 60) + ' мин)'), true]
+    ];
+  }
+  if (isNaN(hr)) cells[2][1] = '—';
+  $('verdict').innerHTML = cells.map(([k, v, warn]) => `<div><span class="k">${k}</span><span class="v${warn ? ' warn' : ''}">${v}</span></div>`).join('');
+}
+
+/* ================= Story ================= */
+const STEPS = [
+  { title: 'Что такое сумерки', set: { city: 'kazan', N: 172, T: 21.6, view: 'sky', cam: 'overview' },
+    text: () => 'Солнце уже зашло, но ещё освещает воздух высоко над нами. Воздух рассеивает этот свет, и небо светится. Чем глубже Солнце под горизонтом, тем слабее свечение. Под горизонтом нарисованы три цветных слоя по 6°: гражданские, навигационные и астрономические сумерки. Ниже −18° свет Солнца до неба уже не доходит, наступает настоящая ночь. Модель можно вращать мышью или пальцем.' },
+  { title: 'Мекка: Солнце уходит почти отвесно', set: { city: 'makkah', N: 80, T: 18.2, view: 'sky', cam: 'side', play: true, speed: .5 },
+    text: () => { const d = decl(80); return `Вид сбоку. В Мекке путь Солнца наклонён к горизонту под углом около ${Math.round(Math.acos(sin(21.42 * D2R) / cos(d * D2R)) * R2D)}°. Солнце быстро проходит все три слоя и опускается до −18° за ${fmtDur(hoursFor(21.42, d, -18) - hoursFor(21.42, d, DEPTH.sunrise))}. Отсюда привычные «полтора часа» между магрибом и иша.`; } },
+  { title: 'Казань, март: путь идёт наискось', set: { city: 'kazan', N: 80, T: 18.6, view: 'sky', cam: 'side', play: true, speed: .5 },
+    text: () => { const d = decl(80); return `Тот же день, та же «толщина» слоёв: 18°. Но на широте Казани путь Солнца наклонён к горизонту всего на ${Math.round(Math.acos(sin(55.79 * D2R) / cos(d * D2R)) * R2D)}°. Солнце пересекает слои наискось, путь получается длиннее: до −18° уже ${fmtDur(hoursFor(55.79, d, -18) - hoursFor(55.79, d, DEPTH.sunrise))}. Пунктиром показан путь Солнца на экваторе.`; } },
+  { title: 'Казань, июнь: сумерки не кончаются', set: { city: 'kazan', N: 172, T: 22.5, view: 'sky', cam: 'side', play: true, speed: .5 },
+    text: () => `Летом путь поднят выше. В полночь Солнце опускается всего до ${fmtDeg(altAt(55.79, decl(172), 0))}, в слой астрономических сумерек не заходит и снова поднимается. Небо на севере светится всю ночь, вечерние сумерки переходят в утренние. Сколько ни жди, признак −18° в такую ночь не наступит. С начала мая до начала августа так каждую ночь.` },
+  { title: 'Из космоса: полоса сумерек и путь города', set: { city: 'kazan', N: 172, T: 0, view: 'earth', cam: 'terminator', play: true, speed: 1 },
+    text: () => 'Теперь та же картина из космоса. Цветные полосы на Земле — зоны сумерек. Их ширина везде одинакова: 18°, около 2000 км. Светлое кольцо — путь города за сутки, пока Земля вращается. Летом северный полюс наклонён к Солнцу, и кольцо Казани проходит по самой полосе сумерек, не заходя в тёмную ночь.' },
+  { title: 'Вид над полюсом: летом и зимой', set: { city: 'kazan', N: 172, T: 0, view: 'earth', cam: 'pole', play: true, speed: 1 },
+    text: () => `Сверху видно, какая часть кольца приходится на каждую зону. Летом ночной (тёмной) части у Казани нет совсем. Переключите дату на 21 декабря: полюс отвернётся от Солнца, кольцо пересечёт полосу круче, и сумерки сократятся до ${fmtDur(hoursFor(55.79, decl(355), -18) - hoursFor(55.79, decl(355), DEPTH.sunrise))}. Это короче, чем летом, но всё равно дольше, чем в Мекке. Самые короткие сумерки у нас около равноденствий.`,
+    action: { label: 'Переключить на 21 декабря', run: () => { S.N = 355; onPlace(); } } },
+  { title: 'Глазами человека в июньскую ночь', set: { city: 'kazan', N: 172, T: 0.4, view: 'sky', cam: 'eye' },
+    text: () => 'Вы стоите в Казани в полночь и смотрите на север. Солнце под горизонтом совсем неглубоко, и над северной частью горизонта держится светлая полоса. Тяните изображение, чтобы осмотреться. Пустите время: свечение сместится с северо‑запада на северо‑восток и перейдёт в утреннюю зарю.' },
+  { title: 'Почему в городе не видно первой зари', set: { city: 'kazan', N: 110, T: 3.0, view: 'sky', cam: 'eye' },
+    text: () => 'Есть и вторая причина споров. Первый свет фаджра очень слабый, а небо над городом подсвечено фонарями. Заря тонет в засветке и становится заметна только когда Солнце поднимется до −15…−13°. Ниже на странице есть два неба рядом: тёмное и городское.',
+    action: { label: 'Перейти к засветке ↓', run: () => document.getElementById('light').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' }) } },
+  { title: 'Все намазы за сутки', set: { city: 'kazan', N: 110, T: 2.5, view: 'sky', cam: 'overview', play: true, speed: 1 },
+    text: () => 'Каждая метка на пути Солнца — момент одного из намазов: Фаджр (−18° утром), Восход, Зухр (после верхней точки), Аср (по длине тени шеста), Магриб (закат), Иша (−18° вечером). Время по часам меняется каждый день, а положение Солнца для каждого намаза остаётся тем же. Таблица справа пересчитывается для выбранного места и даты.' }
+];
+let stepIdx = 0;
+function buildSteps() {
+  const box = $('steps');
+  STEPS.forEach((s, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'step'; b.textContent = i + 1; b.title = s.title;
+    b.addEventListener('click', () => goStep(i)); box.appendChild(b);
+  });
+}
+function goStep(i, initial) {
+  stepIdx = Math.max(0, Math.min(STEPS.length - 1, i));
+  const s = STEPS[stepIdx], st = s.set;
+  document.querySelectorAll('.step').forEach((b, k) => b.setAttribute('aria-current', String(k === stepIdx)));
+  S.city = st.city; S.lat = city().lat; S.N = st.N;
+  els.city.value = S.city;
+  onPlace();
+  S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24;
+  if (st.speed) { S.speed = st.speed; els.speed.value = String(st.speed); }
+  setPlaying(!!st.play && !initial && !reduceMotion);
+  setView(st.view, st.cam, initial);
+  onTime();
+  $('capTitle').textContent = (stepIdx + 1) + '. ' + s.title;
+  $('capText').textContent = s.text();
+  const a = $('capAction');
+  if (s.action) { a.hidden = false; a.textContent = s.action.label; a.onclick = () => { s.action.run(); }; } else a.hidden = true;
+  $('prevStep').disabled = stepIdx === 0; $('nextStep').disabled = stepIdx === STEPS.length - 1;
+}
+
+/* ================= Wiring ================= */
+function onPlace() {
+  els.lat.value = S.lat; els.day.value = S.N;
+  updatePanelStatic();
+  if (has3D) { rebuildSkyPath(); rebuildEarthRing(); }
+  drawRace(); drawYear(); updateLp();
+  onTime();
+}
+function onTime() { updateTime3D(); updatePanelTime(); }
+function setPlaying(p) { S.playing = p; els.play.textContent = p ? '❚❚ Пауза' : '▶ Пустить время'; }
+
+els.city.addEventListener('change', () => { S.city = els.city.value; const c = city(); if (c.lat != null) S.lat = c.lat; onPlace(); });
+els.lat.addEventListener('input', () => { S.lat = +els.lat.value; S.city = 'custom'; els.city.value = 'custom'; onPlace(); });
+els.day.addEventListener('input', () => { S.N = +els.day.value; onPlace(); });
+document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { S.N = +b.dataset.day; onPlace(); }));
+els.time.addEventListener('input', () => { S.T = +els.time.value; onTime(); });
+els.play.addEventListener('click', () => setPlaying(!S.playing));
+els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
+els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+$('fajrA').addEventListener('input', e => { S.fajrA = +e.target.value; $('fajrOut').textContent = String(S.fajrA).replace('.', ',') + '°'; onPlace(); });
+$('ishaA').addEventListener('input', e => { S.ishaA = +e.target.value; $('ishaOut').textContent = String(S.ishaA).replace('.', ',') + '°'; onPlace(); });
+$('asr').addEventListener('change', e => { S.asrK = +e.target.value; onPlace(); });
+$('prevStep').addEventListener('click', () => goStep(stepIdx - 1));
+$('nextStep').addEventListener('click', () => goStep(stepIdx + 1));
+$('depr').addEventListener('input', e => { S.depr = +e.target.value; lpPlaying = false; $('lpPlay').textContent = lpLabel(); updateLp(); });
+$('bortle').addEventListener('input', e => { S.bortle = +e.target.value; updateLp(); });
+document.querySelectorAll('#lpMode button').forEach(b => b.addEventListener('click', () => {
+  S.lpMode = b.dataset.mode; document.querySelectorAll('#lpMode button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  lpPlaying = false; $('lpPlay').textContent = lpLabel(); updateLp();
+}));
+let lpPlaying = false;
+const lpLabel = () => lpPlaying ? '❚❚ Пауза' : (S.lpMode === 'dawn' ? '▶ Показать рассвет' : '▶ Показать вечер');
+$('lpPlay').addEventListener('click', () => {
+  lpPlaying = !lpPlaying;
+  if (lpPlaying) { if (S.lpMode === 'dawn' && S.depr < 3) S.depr = 22; if (S.lpMode === 'dusk' && S.depr > 21) S.depr = 2; }
+  $('lpPlay').textContent = lpLabel();
+});
+
+/* ================= Loop ================= */
+let last = performance.now(), lpAcc = 0;
+function frame(now) {
+  const dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (S.playing) { S.T = (S.T + dt * S.speed + 24) % 24; onTime(); }
+  if (lpPlaying) {
+    lpAcc += dt;
+    S.depr += (S.lpMode === 'dawn' ? -1 : 1) * dt * 1.6;
+    if (S.depr <= 0 || S.depr >= 24) { S.depr = Math.max(0, Math.min(24, S.depr)); lpPlaying = false; $('lpPlay').textContent = lpLabel(); }
+    $('depr').value = S.depr;
+    if (lpAcc > .05) { lpAcc = 0; updateLp(); }
+  }
+  if (has3D) {
+    stepCamera(now);
+    if (controls.enabled && !tween) controls.update();
+    renderer.render(S.view === 'sky' ? skyScene : earthScene, camera);
+    updateLabels();
+  }
+  requestAnimationFrame(frame);
+}
+
+function onTheme() {
+  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart();
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); }, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); });
+
+init3D();
+buildSteps();
+goStep(0, true);
+requestAnimationFrame(frame);
+})();
+</script>
+</html>
