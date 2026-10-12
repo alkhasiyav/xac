@@ -2295,13 +2295,13 @@ function initEarth() {
     extensions: { derivatives: true },
     uniforms: {
       sunDir: { value: new THREE.Vector3(1, 0, 0) },
-      landMap: { value: landTex }, hasLand: { value: 0 }, lonRef: { value: 0 },
+      landMap: { value: landTex }, hasLand: { value: 0 }, lonRef: { value: 0 }, bands: { value: 1 },
       cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) }
     },
     vertexShader: 'varying vec3 vN; varying vec3 vL; varying vec3 vW; void main(){ vN = normalize(mat3(modelMatrix) * normal); vL = position; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: `
       uniform vec3 sunDir, cCivil, cNaut, cAstro;
-      uniform sampler2D landMap; uniform float hasLand, lonRef;
+      uniform sampler2D landMap; uniform float hasLand, lonRef, bands;
       varying vec3 vN; varying vec3 vL; varying vec3 vW;
       const float PI = 3.14159265;
       float grid(float v, float step){ float f = abs(fract(v/step + 0.5) - 0.5) * step; float w = fwidth(v) * 0.8; return 1.0 - smoothstep(0.0, w, f); }
@@ -2336,7 +2336,7 @@ function initEarth() {
         // twilight zones drawn over the ground as translucent colour
         vec3 band = alt > -6.0 ? cCivil : alt > -12.0 ? cNaut : cAstro;
         float inBand = step(-18.0, alt) * step(alt, 0.0);
-        col = mix(col, band, inBand * 0.55);
+        col = mix(col, band, inBand * 0.55 * bands);
         col = mix(col, col * 0.55 + vec3(0.01, 0.015, 0.04), step(alt, -18.0));
         // graticule
         float lonD = degrees(atan(p.z, p.x));
@@ -2373,11 +2373,12 @@ function initEarth() {
   earth.ringHolder = new THREE.Group(); earth.tilt.add(earth.ringHolder);
   // band boundary circles (world, around sun axis)
   const names = { 0: '0°', '-6': '−6°', '-12': '−12°', '-18': '−18°: граница сумерек' }, tilt = { 0: 8, '-6': 16, '-12': 24, '-18': 32 };
+  earth.bandGroup = new THREE.Group(); sc.add(earth.bandGroup);
   for (const h of [0, -6, -12, -18]) {
     const pts = []; const rr = ER * 1.006;
     for (let i = 0; i <= 160; i++) { const a = i / 160 * Math.PI * 2; pts.push(new THREE.Vector3(rr * sin(h * D2R), rr * cos(h * D2R) * cos(a), rr * cos(h * D2R) * sin(a))); }
-    sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: h === -18 ? 0xdfe6ff : 0xffffff, transparent: true, opacity: h === 0 ? .5 : h === -18 ? .95 : .28 })));
-    const a = tilt[h] * D2R; addLabel(names[h], 'plain', 'earth', v => v.set(rr * sin(h * D2R), -rr * cos(h * D2R) * sin(a), rr * cos(h * D2R) * cos(a)).multiplyScalar(1.04), () => S.cam !== 'follow');
+    earth.bandGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: h === -18 ? 0xdfe6ff : 0xffffff, transparent: true, opacity: h === 0 ? .5 : h === -18 ? .95 : .28 })));
+    const a = tilt[h] * D2R; addLabel(names[h], 'plain', 'earth', v => v.set(rr * sin(h * D2R), -rr * cos(h * D2R) * sin(a), rr * cos(h * D2R) * cos(a)).multiplyScalar(1.04), () => S.cam !== 'follow' && earth.bandGroup.visible);
   }
   // sunlight arrows
   for (const [y, z] of [[2.5, 2.5], [-2.5, 2.5], [2.5, -2.5], [-2.5, -2.5], [0, 3.5], [0, -3.5], [3.5, 0], [-3.5, 0]]) {
@@ -3453,7 +3454,7 @@ requestAnimationFrame(frame);
 
 /* Hooks for the scripted video renderer (twilight/video): it stops the live loop and drives the scenes frame by frame. */
 window.twilightAPI = {
-  S, CITIES, eye, sky, dateLabel, toClock, toSolar, altAt, dec, hoursFor,
+  S, CITIES, eye, sky, earth, orbit, dateLabel, toClock, toSolar, altAt, dec, hoursFor,
   stopLoop: () => { loopStopped = true; },
   setView: v => { S.view = v; },
   place: () => { updatePanelStatic(); if (has3D) { rebuildSkyPath(); rebuildEarthRing(); } },

@@ -1,10 +1,13 @@
 // Render the scripted video to MP4 (1920×1080, H.264) for YouTube.
-// Usage: node twilight/video/render.js <offline page .html> <out.mp4> [fps] [from-seconds] [to-seconds]
+// Usage: node twilight/video/render.js <offline page .html> <out.mp4> [fps] [lang: ru|av] [from-seconds] [to-seconds]
+// Captions come from captions-<lang>.json next to this script.
 // Needs Playwright (Chromium) and ffmpeg with libx264.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const path = require('path');
-const [page_, out, fpsArg, fromArg, toArg] = process.argv.slice(2);
+const [page_, out, fpsArg, langArg, fromArg, toArg] = process.argv.slice(2);
+const lang = langArg || 'ru';
+const text = JSON.parse(require('fs').readFileSync(path.join(__dirname, `captions-${lang}.json`), 'utf8'));
 const fps = +(fpsArg || 30);
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -13,6 +16,7 @@ const fps = +(fpsArg || 30);
   await page.goto('file://' + path.resolve(page_));
   await page.waitForFunction(() => window.twilightAPI);
   await page.addStyleTag({ path: path.join(__dirname, 'video.css') });
+  await page.evaluate(([t, l]) => { window.VIDEO_TEXT = t; window.__lang = l; }, [text, lang]);
   await page.addScriptTag({ path: path.join(__dirname, 'director.js') });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(800);

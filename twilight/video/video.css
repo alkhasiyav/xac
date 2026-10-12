@@ -19,12 +19,12 @@ html, body { margin: 0 !important; background: #060914 !important; overflow: hid
   background: radial-gradient(ellipse at center, rgba(6,9,20,.55), rgba(6,9,20,.85)); z-index: 30; text-align: center; padding: 0 160px; }
 #v-title .t1 { font: 600 84px/1.1 "Unbounded", sans-serif; color: #fff; text-wrap: balance; }
 #v-title .t2 { font: 400 36px/1.35 "Golos Text", sans-serif; color: #c9cfe8; max-width: 1300px; text-wrap: balance; }
-#v2d { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 60px 0 130px;
+#v2d { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding-bottom: 120px;
   background: #0B0E1B; z-index: 10; }
-#v2d > * { width: 1300px; flex: none; transform: scale(1.4); transform-origin: center; }   /* charts drawn at 2× pixel ratio, then enlarged for 1080p */
-#v2d .two { grid-template-columns: 1fr 1fr !important; gap: 36px !important; }
-#v2d .fig-title { font-size: 17px !important; }
-#v2d .keys { font-size: 14px !important; }
-#v2d figcaption { display: none; }
-#v2d .lp-controls { display: none !important; }
-#v2d .sky .cap { font-size: 15px !important; }
+#v-sum { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: center; padding: 0 220px;
+  background: linear-gradient(90deg, rgba(6,9,20,.92), rgba(6,9,20,.6)); opacity: 0; }
+#v-sum .h { font: 600 64px/1.1 "Unbounded", sans-serif; color: #fff; margin-bottom: 40px; }
+#v-sum ol { margin: 0; padding-left: 50px; display: grid; gap: 26px; }
+#v-sum li { font: 500 38px/1.3 "Golos Text", sans-serif; color: #E6E9F5; }
+#v-sum li::marker { color: #F2994A; font-weight: 600; }
+.v-nodate .hud .clock small, .v-nodate .phase { display: none !important; }
