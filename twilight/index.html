@@ -817,8 +817,8 @@ function fmtDur(hours) {
 
 /* ================= State ================= */
 const NAMES = {
-  ru: { fajr: 'Фаджр', sunrise: 'Восход', dhuhr: 'Зухр', asr: 'Аср', maghrib: 'Магриб', isha: 'Иша', midnight: 'Полночь', noon: 'Полдень' },
-  av: { fajr: 'Рогьалил', sunrise: 'Бакъ бакки', dhuhr: 'Къалъул', asr: 'Бакъанил', maghrib: 'МаркIачIул', isha: 'Богол', midnight: 'Сордо бащагъи', noon: 'Къо бащагъи' }
+  ru: { fajr: 'Фаджр', sunrise: 'Восход', dhuhr: 'Зухр', asr: 'Аср', maghrib: 'Магриб', isha: 'Иша', midnight: 'Полночь', noon: 'Полдень', sun: 'Солнце', sunlight: 'свет Солнца' },
+  av: { fajr: 'Рогьалил', sunrise: 'Бакъ бакки', dhuhr: 'Къалъул', asr: 'Бакъанил', maghrib: 'МаркIачIул', isha: 'Богол', midnight: 'Сордо бащагъи', noon: 'Къо бащагъи', sun: 'Бакъ', sunlight: 'Бакъул канлъи' }
 };
 const NM = k => NAMES[S.lang][k];
 let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') savedLang = 'av'; } catch (e) {}
@@ -1196,7 +1196,7 @@ function initEarth() {
   for (const [y, z] of [[2.5, 2.5], [-2.5, 2.5], [2.5, -2.5], [-2.5, -2.5], [0, 3.5], [0, -3.5], [3.5, 0], [-3.5, 0]]) {
     sc.add(new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(15, y, z), 6, 0xffd27a, .6, .35));
   }
-  addLabel('свет Солнца', 'plain', 'earth', v => v.set(13, 4.2, 0));
+  earth.lightLbl = addLabel(NM('sunlight'), 'plain', 'earth', v => v.set(13, 4.2, 0));
   const sun = new THREE.Mesh(new THREE.SphereGeometry(2.4, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
   sun.position.set(70, 0, 0); sun.add(glowSprite('rgba(255,190,90,.7)', 18)); sc.add(sun);
 }
@@ -1369,7 +1369,7 @@ function updateTime3D() {
   sky.domeMat.uniforms.sunAlt.value = alt;
   sky.groundDisc.material.uniforms.sunAlt.value = alt; sky.groundPlain.material.uniforms.sunAlt.value = alt;
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
-  sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
+  sky.sunLbl.el.textContent = NM('sun') + ' ' + fmtDeg(alt);
   earth.mesh.rotation.y = H;
 }
 
@@ -1406,7 +1406,7 @@ function updatePanelTime() {
   els.hudClock.innerHTML = fmtHM(S.T) + `<small>${isSolar ? 'солнечное' : c.name}, ${dateLabel(S.N)}</small>`;
   const ph = phaseOf(alt);
   els.hudPhase.querySelector('i').style.background = ph.color;
-  els.hudPhase.querySelector('span').textContent = ph.name + ' · Солнце ' + fmtDeg(alt);
+  els.hudPhase.querySelector('span').textContent = ph.name + ' · ' + NM('sun') + ' ' + fmtDeg(alt);
   // highlight the current prayer period
   const tt = ((t % 24) + 24) % 24;
   const P = prayerTimes().filter(p => isFinite(p.t)).sort((a, b) => a.t - b.t);
@@ -2038,6 +2038,7 @@ function setLang(l) {
   try { localStorage.setItem('prayerNames', l); } catch (e) {}
   document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   document.querySelectorAll('[data-pname]').forEach(h => { h.textContent = NM(h.dataset.pname); });
+  if (has3D) earth.lightLbl.el.textContent = NM('sunlight');
   onPlace();
 }
 document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
