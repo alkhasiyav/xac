@@ -494,7 +494,10 @@
       </div>
       <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
       <label class="check"><input type="checkbox" id="boost"> Усилить слабое свечение неба (для проектора)</label>
-      <label class="check"><input type="checkbox" id="seeThrough" checked> Прозрачная земля: видно Солнце под горизонтом</label>
+      <div class="field">
+        <div class="field-head"><label for="groundT">Прозрачность земли</label><output id="groundTOut" for="groundT">40%</output></div>
+        <input type="range" id="groundT" min="0" max="95" step="1" value="40">
+      </div>
       <label class="check"><input type="checkbox" id="axisToggle"> Показать ось мира и направление на Полярную звезду</label>
 
       <dl class="facts" id="facts"></dl>
@@ -832,7 +835,7 @@ let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') sa
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
   playing: false, dir: 1, speed: 1, yearDir: 0, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
-  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, seeThrough: true
+  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, groundT: 40
 };
 const city = () => CITIES.find(c => c.id === S.city);
 const dec = () => decl(S.N);
@@ -1337,8 +1340,9 @@ function setGround() {
   const eyeView = S.cam === 'eye';
   sky.groundDisc.visible = !eyeView; sky.groundPlain.visible = eyeView; sky.obs.visible = !eyeView; sky.horizonRing.visible = !eyeView;
   for (const g of [sky.groundDisc, sky.groundPlain]) {
-    const m = g.material, see = S.seeThrough;
-    m.uniforms.opacity.value = see ? .62 : 1; m.transparent = see; m.depthWrite = !see; m.needsUpdate = true;
+    const m = g.material, see = S.groundT > 0;   // 0% = solid ground, as in real life
+    m.uniforms.opacity.value = 1 - S.groundT / 100;
+    if (m.transparent !== see) { m.transparent = see; m.depthWrite = !see; m.needsUpdate = true; }
   }
 }
 function setCam(id, instant) {
@@ -2142,7 +2146,7 @@ $('playBack').addEventListener('click', () => setPlaying(!(S.playing && S.dir < 
 document.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => { S.T = (S.T + +b.dataset.tstep / 60 + 24) % 24; onTime(); }));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
-$('seeThrough').addEventListener('change', e => { S.seeThrough = e.target.checked; setGround(); });
+$('groundT').addEventListener('input', e => { S.groundT = +e.target.value; $('groundTOut').textContent = S.groundT + '%' + (S.groundT === 0 ? ' · сплошная' : ''); setGround(); });
 $('axisToggle').addEventListener('change', e => { S.axis = e.target.checked; if (has3D) sky.axis.visible = S.axis; });
 function setLang(l) {
   S.lang = l;
