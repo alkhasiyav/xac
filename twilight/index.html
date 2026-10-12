@@ -152,6 +152,10 @@
   }
   .seg button:hover { color: var(--space-ink); }
   .seg button[aria-pressed="true"] { background: rgba(242, 153, 74, .2); color: #FFD3AA; }
+  .seg.light { background: var(--sunken); border-color: var(--line); backdrop-filter: none; }
+  .seg.light button { color: var(--muted); padding: 6px 10px; }
+  .seg.light button:hover { color: var(--ink); }
+  .seg.light button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
   .seg button:focus-visible, .btn:focus-visible, .step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .hud {
@@ -484,6 +488,7 @@
       </div>
       <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
       <label class="check"><input type="checkbox" id="boost"> Усилить слабое свечение неба (для проектора)</label>
+      <label class="check"><input type="checkbox" id="axisToggle"> Показать ось мира и направление на Полярную звезду</label>
 
       <dl class="facts" id="facts"></dl>
       <div class="alert" id="alert" hidden></div>
@@ -495,6 +500,13 @@
 
       <div class="field">
         <span class="lab" id="prayHead">Время намазов</span>
+        <div class="row" style="align-items:center; gap:10px">
+          <span class="muted" style="font-size:13.5px">Названия:</span>
+          <div class="seg light" role="group" aria-label="Названия намазов">
+            <button type="button" data-lang="ru" aria-pressed="true">Русские</button>
+            <button type="button" data-lang="av" aria-pressed="false">Аварские</button>
+          </div>
+        </div>
         <table class="prayers"><tbody id="prayTable"></tbody></table>
       </div>
 
@@ -633,32 +645,32 @@
     </div>
     <div class="cards">
       <article class="card">
-        <div class="top"><h3>Фаджр</h3><span class="ar" lang="ar">الفجر</span></div>
+        <div class="top"><h3 data-pname="fajr">Фаджр</h3><span class="ar" lang="ar">الفجر</span></div>
         <div class="crit">Солнце ≈ 18° под горизонтом, восток</div>
         <p>Начинается с истинной зари: над восточным горизонтом появляется слабое белое свечение, которое расширяется вдоль горизонта. Разные методики берут от 15° до 19,5°. Время заканчивается с восходом.</p>
       </article>
       <article class="card">
-        <div class="top"><h3>Восход</h3><span class="ar" lang="ar">الشروق</span></div>
+        <div class="top"><h3 data-pname="sunrise">Восход</h3><span class="ar" lang="ar">الشروق</span></div>
         <div class="crit">центр Солнца на −0,83°</div>
         <p>Верхний край диска показался над горизонтом. Центр Солнца при этом ещё чуть ниже горизонта: мешает радиус диска и преломление света в воздухе.</p>
       </article>
       <article class="card">
-        <div class="top"><h3>Зухр</h3><span class="ar" lang="ar">الظهر</span></div>
+        <div class="top"><h3 data-pname="dhuhr">Зухр</h3><span class="ar" lang="ar">الظهر</span></div>
         <div class="crit">после прохождения меридиана</div>
         <p>Солнце в самой высокой точке над югом, тени самые короткие. Как только Солнце сместилось к западу и тень начала удлиняться, наступает зухр. По часам это обычно не 12:00.</p>
       </article>
       <article class="card">
-        <div class="top"><h3>Аср</h3><span class="ar" lang="ar">العصر</span></div>
+        <div class="top"><h3 data-pname="asr">Аср</h3><span class="ar" lang="ar">العصر</span></div>
         <div class="crit">тень = предмет + полуденная тень</div>
         <p>Когда тень предмета стала равна его высоте плюс длина полуденной тени. У ханафитов нужна двойная высота. Ниже есть отдельная анимация с шестом и его тенью.</p>
       </article>
       <article class="card">
-        <div class="top"><h3>Магриб</h3><span class="ar" lang="ar">المغرب</span></div>
+        <div class="top"><h3 data-pname="maghrib">Магриб</h3><span class="ar" lang="ar">المغرب</span></div>
         <div class="crit">центр Солнца на −0,83°, запад</div>
         <p>Верхний край Солнца скрылся за горизонтом. С этого момента начинаются сумерки.</p>
       </article>
       <article class="card">
-        <div class="top"><h3>Иша</h3><span class="ar" lang="ar">العشاء</span></div>
+        <div class="top"><h3 data-pname="isha">Иша</h3><span class="ar" lang="ar">العشاء</span></div>
         <div class="crit">сумерки исчезли: ≈ 15–18°</div>
         <p>По мнению большинства учёных, после исчезновения красной зари (шафак). У Абу Ханифы — после исчезновения белого свечения, которое гаснет позже, около −18°. Если Солнце так глубоко не опускается, признак не наступает.</p>
       </article>
@@ -803,10 +815,16 @@ function fmtDur(hours) {
 }
 
 /* ================= State ================= */
+const NAMES = {
+  ru: { fajr: 'Фаджр', sunrise: 'Восход', dhuhr: 'Зухр', asr: 'Аср', maghrib: 'Магриб', isha: 'Иша', midnight: 'Полночь', noon: 'Полдень' },
+  av: { fajr: 'Рогьалил', sunrise: 'Бакъ бакки', dhuhr: 'Къалъул', asr: 'Бакъанил', maghrib: 'МаркIачIул', isha: 'Богол', midnight: 'Сордо бащагъи', noon: 'Къо бащагъи' }
+};
+const NM = k => NAMES[S.lang][k];
+let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') savedLang = 'av'; } catch (e) {}
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
   playing: false, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
-  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0
+  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false
 };
 const city = () => CITIES.find(c => c.id === S.city);
 const dec = () => decl(S.N);
@@ -822,12 +840,12 @@ function prayerTimes() {
   const ha = hoursFor(lat, d, asrAlt(lat, d, S.asrK));
   const polarDay = isNaN(hr) && altAt(lat, d, 0) > DEPTH.sunrise;
   return [
-    { id: 'fajr', name: 'Фаджр', ar: 'الفجر', t: 12 - hf, why: isNaN(hf) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.fajrA).replace('.', ',') + '°') : '' },
-    { id: 'sunrise', name: 'Восход', ar: 'الشروق', t: 12 - hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
-    { id: 'dhuhr', name: 'Зухр', ar: 'الظهر', t: 12 + 2 / 60, why: '' },
-    { id: 'asr', name: 'Аср', ar: 'العصر', t: 12 + ha, why: isNaN(ha) ? 'тень не достигает нужной длины' : '' },
-    { id: 'maghrib', name: 'Магриб', ar: 'المغرب', t: 12 + hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
-    { id: 'isha', name: 'Иша', ar: 'العشاء', t: 12 + hi, why: isNaN(hi) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.ishaA).replace('.', ',') + '°') : '' }
+    { id: 'fajr', name: NM('fajr'), ar: 'الفجر', t: 12 - hf, why: isNaN(hf) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.fajrA).replace('.', ',') + '°') : '' },
+    { id: 'sunrise', name: NM('sunrise'), ar: 'الشروق', t: 12 - hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
+    { id: 'dhuhr', name: NM('dhuhr'), ar: 'الظهر', t: 12 + 2 / 60, why: '' },
+    { id: 'asr', name: NM('asr'), ar: 'العصر', t: 12 + ha, why: isNaN(ha) ? 'тень не достигает нужной длины' : '' },
+    { id: 'maghrib', name: NM('maghrib'), ar: 'المغرب', t: 12 + hr, why: isNaN(hr) ? (polarDay ? 'Солнце не заходит' : 'полярная ночь') : '' },
+    { id: 'isha', name: NM('isha'), ar: 'العشاء', t: 12 + hi, why: isNaN(hi) ? (polarDay ? 'полярный день' : 'Солнце не опускается до −' + String(S.ishaA).replace('.', ',') + '°') : '' }
   ];
 }
 
@@ -991,8 +1009,8 @@ function initSky() {
 
   // celestial pole axis
   sky.axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]), new THREE.LineDashedMaterial({ color: 0x9fb0ff, dashSize: .35, gapSize: .25, transparent: true, opacity: .7 }));
-  sc.add(sky.axis);
-  sky.axisLbl = addLabel('к Полярной звезде', 'plain', 'sky', v => v.copy(sky.axisEnd || v.set(0, 1, 0)));
+  sky.axis.visible = S.axis; sc.add(sky.axis);
+  sky.axisLbl = addLabel('к Полярной звезде', 'plain', 'sky', v => v.copy(sky.axisEnd || v.set(0, 1, 0)), () => S.axis);
 
   // sun
   sky.sun = new THREE.Mesh(new THREE.SphereGeometry(.42, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
@@ -1003,8 +1021,7 @@ function initSky() {
   sky.prayerMarkers = new THREE.Group(); sc.add(sky.prayerMarkers);
   sky.prayerLabels = [];
   for (const id of ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha']) {
-    const nm = { fajr: 'Фаджр', sunrise: 'Восход', dhuhr: 'Зухр', asr: 'Аср', maghrib: 'Магриб', isha: 'Иша' }[id];
-    const L = addLabel(nm, 'pray', 'sky', v => v.copy(L.pos), () => L.ok && S.cam !== 'eye'); L.pos = new THREE.Vector3(); L.id = id; sky.prayerLabels.push(L);
+    const L = addLabel(NM(id), 'pray', 'sky', v => v.copy(L.pos), () => L.ok && S.cam !== 'eye'); L.pos = new THREE.Vector3(); L.id = id; sky.prayerLabels.push(L);
   }
   sky.lowLbl = addLabel('', 'plain', 'sky', v => v.copy(sky.lowPos), () => S.cam !== 'eye' && sky.lowPos);
 }
@@ -1038,8 +1055,7 @@ function rebuildSkyPath() {
   const P = prayerTimes();
   for (const L of sky.prayerLabels) {
     const p = P.find(x => x.id === L.id); L.ok = isFinite(p.t);
-    if (L.id === 'fajr') L.el.textContent = 'Фаджр · −' + String(S.fajrA).replace('.', ',') + '°';
-    if (L.id === 'isha') L.el.textContent = 'Иша · −' + String(S.ishaA).replace('.', ',') + '°';
+    L.el.textContent = NM(L.id) + (L.id === 'fajr' ? ' · −' + String(S.fajrA).replace('.', ',') + '°' : L.id === 'isha' ? ' · −' + String(S.ishaA).replace('.', ',') + '°' : '');
     if (!L.ok) continue;
     const v = sunVec(S.lat, d, (p.t - 12) * 15 * D2R); L.pos.set(v[0] * R, v[1] * R, v[2] * R);
     const m = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1df }));
@@ -1047,8 +1063,8 @@ function rebuildSkyPath() {
   }
   const lowAlt = altAt(S.lat, d, 0);
   const lv = sunVec(S.lat, d, Math.PI);
-  sky.lowPos = new THREE.Vector3(lv[0] * R, lv[1] * R - .25, lv[2] * R);
-  sky.lowLbl.el.textContent = 'полночь: ' + fmtDeg(lowAlt);
+  sky.lowPos = new THREE.Vector3(lv[0] * R, lv[1] * R - .9, lv[2] * R);
+  sky.lowLbl.el.textContent = NM('midnight') + ': ' + fmtDeg(lowAlt);
 }
 
 function initEarth() {
@@ -1766,18 +1782,18 @@ function drawShadow() {
   drawShTop(top, tip, L0, a1, a2, r);
   let state;
   if (!tip) state = 'Солнце за горизонтом';
-  else if (t < 12) state = 'До полудня: тень укорачивается';
-  else if (L < L0 + 1) state = 'Время зухра: тень растёт';
-  else if (L < L0 + 2) state = 'Наступил аср';
-  else state = 'Аср и по ханафитскому мазхабу';
+  else if (t < 12) state = 'До ' + (S.lang === 'ru' ? 'полудня' : NM('noon')) + ': тень укорачивается';
+  else if (L < L0 + 1) state = (S.lang === 'ru' ? 'Время зухра' : NM('dhuhr')) + ': тень растёт';
+  else if (L < L0 + 2) state = 'Наступил ' + (S.lang === 'ru' ? 'аср' : NM('asr'));
+  else state = NM('asr') + ' и по ханафитскому мазхабу';
   const cells = [
     ['Сейчас', state, 'state'],
     ['Высота Солнца', tip ? fmtDeg(tip.alt) : '—'],
     ['Тень сейчас', tip ? fmtX(L) + ' шеста' : '—'],
     ['Тень в полдень', isFinite(L0) ? fmtX(L0) + ' шеста' : '—'],
-    ['Зухр (полдень)', fmtHM(toClock(12))],
-    ['Аср: тень = полдень + 1', fmtHM(toClock(a1)), 'warn'],
-    ['Аср у ханафитов: полдень + 2', fmtHM(toClock(a2))]
+    [NM('dhuhr') + ' (' + NM('noon').toLowerCase() + ')', fmtHM(toClock(12))],
+    [NM('asr') + ': тень = ' + NM('noon').toLowerCase() + ' + 1', fmtHM(toClock(a1)), 'warn'],
+    [NM('asr') + ' у ханафитов: ' + NM('noon').toLowerCase() + ' + 2', fmtHM(toClock(a2))]
   ];
   $('shVerdict').innerHTML = cells.map(([k, v, cls]) => `<div><span class="k">${k}</span><span class="v${cls ? ' ' + (cls === 'state' ? 'state warn' : cls) : ''}">${v}</span></div>`).join('');
 }
@@ -1803,7 +1819,7 @@ function drawShSide(cv, tip, L, L0, t) {
   const top = [x0, gy - Hs];
   // ground marks
   x.font = '600 11px ' + font; x.textAlign = 'center';
-  const marks = [[L0, 'полдень', DAYC.noon], [L0 + 1, 'аср', DAYC.asr], [L0 + 2, 'аср (ханафиты)', DAYC.hanafi]];
+  const marks = [[L0, NM('noon'), DAYC.noon], [L0 + 1, NM('asr'), DAYC.asr], [L0 + 2, NM('asr') + ' (ханафиты)', DAYC.hanafi]];
   marks.forEach(([len, lab, col], i) => {
     const X = x0 + len * Hs; if (!isFinite(X) || X > w - 4) return;
     x.strokeStyle = col; x.lineWidth = 2; x.beginPath(); x.moveTo(X, gy - 8); x.lineTo(X, gy + 10); x.stroke();
@@ -1870,7 +1886,7 @@ function drawShTop(cv, tip, L0, a1, a2, r) {
     x.fillStyle = col; x.beginPath(); x.arc(X, Y, 4.5, 0, Math.PI * 2); x.fill();
     x.font = '600 11px ' + font; const tw = x.measureText(lab).width; let right = X > cx; if (right && X + 8 + tw > w - 4) right = false; if (!right && X - 8 - tw < 4) right = true;
     x.textAlign = right ? 'left' : 'right'; x.fillText(lab, X + (right ? 8 : -8), Y + dy); };
-  pt(12, DAYC.noon, 'полдень', 0); pt(a1, DAYC.asr, 'аср', -7); pt(a2, DAYC.hanafi, 'аср (ханафиты)', 8);
+  pt(12, DAYC.noon, NM('noon'), 0); pt(a1, DAYC.asr, NM('asr'), -7); pt(a2, DAYC.hanafi, NM('asr') + ' (ханафиты)', 8);
   // current shadow
   if (tip) {
     const X = cx + tip.x * sc, Y = cy + tip.y * sc;
@@ -1974,6 +1990,15 @@ els.play.addEventListener('click', () => setPlaying(!S.playing));
 document.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => { S.T = (S.T + +b.dataset.tstep / 60 + 24) % 24; onTime(); }));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
+$('axisToggle').addEventListener('change', e => { S.axis = e.target.checked; if (has3D) sky.axis.visible = S.axis; });
+function setLang(l) {
+  S.lang = l;
+  try { localStorage.setItem('prayerNames', l); } catch (e) {}
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  document.querySelectorAll('[data-pname]').forEach(h => { h.textContent = NM(h.dataset.pname); });
+  onPlace();
+}
+document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
 $('boost').addEventListener('change', e => { if (has3D) sky.domeMat.uniforms.gain.value = e.target.checked ? 2.5 : 0; });
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 $('fajrA').addEventListener('input', e => { S.fajrA = +e.target.value; $('fajrOut').textContent = String(S.fajrA).replace('.', ',') + '°'; onPlace(); });
@@ -2079,6 +2104,7 @@ document.addEventListener('keydown', e => {
 
 init3D();
 buildSteps();
+if (S.lang !== 'ru') setLang(S.lang);
 goStep(0, true);
 requestAnimationFrame(frame);
 })();
