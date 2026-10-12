@@ -488,6 +488,7 @@
       </div>
       <label class="check"><input type="checkbox" id="compare" checked> Показать путь Солнца на экваторе</label>
       <label class="check"><input type="checkbox" id="boost"> Усилить слабое свечение неба (для проектора)</label>
+      <label class="check"><input type="checkbox" id="seeThrough" checked> Прозрачная земля: видно Солнце под горизонтом</label>
       <label class="check"><input type="checkbox" id="axisToggle"> Показать ось мира и направление на Полярную звезду</label>
 
       <dl class="facts" id="facts"></dl>
@@ -824,7 +825,7 @@ let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') sa
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
   playing: false, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
-  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false
+  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, seeThrough: true
 };
 const city = () => CITIES.find(c => c.id === S.city);
 const dec = () => decl(S.N);
@@ -986,9 +987,37 @@ function initSky() {
   });
   sc.add(new THREE.Mesh(new THREE.SphereGeometry(R, 96, 64), sky.domeMat));
   // ground
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshBasicMaterial({ color: 0x24312a, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide }));
-  ground.rotation.x = -Math.PI / 2; sc.add(ground);
-  sc.add(ringLine(R, 0.01, 0xe8eaf4, .9));
+  // flat landscape: a small disc for views from outside, a plain to the horizon for the observer's own view
+  const groundMat = (fadeR, hazeK) => new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { sunAlt: { value: 0 }, opacity: { value: .62 }, fadeR: { value: fadeR }, hazeK: { value: hazeK } },
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `
+      uniform float sunAlt, opacity, fadeR, hazeK;
+      varying vec3 vW;
+      float hash(vec2 q){ return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 q){ vec2 i = floor(q), f = fract(q); f = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+      void main(){
+        vec2 q = vW.xz * 2.0;
+        float n = noise(q * 1.3) * 0.5 + noise(q * 5.0) * 0.3 + noise(q * 23.0) * 0.2;
+        vec3 c = mix(vec3(0.15, 0.23, 0.09), vec3(0.36, 0.40, 0.19), n);              // grass and steppe
+        c = mix(c, vec3(0.50, 0.45, 0.29), smoothstep(0.6, 0.8, noise(q * 0.3)) * 0.8);   // dry patches
+        float day = smoothstep(-6.0, 12.0, sunAlt);
+        float tw = smoothstep(-18.0, -2.0, sunAlt);
+        float light = 0.02 + 0.10 * tw + 0.70 * day + 0.30 * max(sin(radians(sunAlt)), 0.0);
+        vec3 col = c * light * mix(vec3(1.0), vec3(1.15, 0.95, 0.8), day * (1.0 - smoothstep(5.0, 25.0, sunAlt)));
+        float dist = length(vW.xz);
+        vec3 haze = mix(vec3(0.02, 0.03, 0.07), vec3(0.62, 0.72, 0.85), day) + vec3(0.08, 0.10, 0.18) * tw * (1.0 - day);
+        col = mix(col, haze, smoothstep(fadeR * 0.03, fadeR * 0.6, dist) * hazeK);
+        gl_FragColor = vec4(col, opacity * (1.0 - smoothstep(fadeR * 0.97, fadeR, dist)));
+      }`
+  });
+  sky.groundDisc = new THREE.Mesh(new THREE.CircleGeometry(R, 128), groundMat(R, 0));
+  sky.groundPlain = new THREE.Mesh(new THREE.CircleGeometry(600, 128), groundMat(600, .9));
+  for (const g of [sky.groundDisc, sky.groundPlain]) { g.rotation.x = -Math.PI / 2; sc.add(g); }
+  sky.groundPlain.visible = false;
+  sky.horizonRing = ringLine(R, 0.01, 0xe8eaf4, .9); sc.add(sky.horizonRing);
   for (const h of [-6, -12, -18]) sc.add(ringLine(R * cos(h * D2R), R * sin(h * D2R), 0xb9c1ea, .35));
   // meridian arc + prime vertical faint
   const mer = []; for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI; mer.push(new THREE.Vector3(0, R * sin(a), R * cos(a))); }
@@ -1000,7 +1029,7 @@ function initSky() {
   addLabel('горизонт', 'plain', 'sky', v => v.set(-R * .72, 0.15, R * .72), () => S.cam !== 'eye');
 
   // observer and gnomon
-  const obs = new THREE.Group();
+  const obs = new THREE.Group(); sky.obs = obs;
   const body = new THREE.Mesh(new THREE.CylinderGeometry(.13, .17, .7, 16), new THREE.MeshBasicMaterial({ color: 0xd7dcf0 }));
   body.position.y = .35; obs.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(.12, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd7dcf0 }));
@@ -1216,7 +1245,7 @@ function camPose(id) {
     case 'overview': return { pos: [16, 9.5, 17], target: [0, -1.2, 0], fov: 45 };
     case 'side': return { pos: [320, 0, 0], target: [0, -1.5, 0], fov: 4.9 };   // far and narrow: almost no perspective, circles seen edge-on look like lines
     case 'top': return { pos: [0, 30, .01], target: [0, 0, 0], fov: 45 };
-    case 'eye': return { pos: [0, .9, 0], target: null, fov: 70 };
+    case 'eye': return { pos: [0, EYE_H, 0], target: null, fov: 70 };
     case 'terminator': return { pos: [-4, 11, 16], target: [0, 0, 0], fov: 40 };
     case 'pole': { const d = dec() * D2R; return { pos: [sin(d) * 22, cos(d) * 22, .01], target: [0, 0, 0], fov: 40 }; }
     case 'sunview': return { pos: [24, 3, 0], target: [0, 0, 0], fov: 40 };
@@ -1225,12 +1254,23 @@ function camPose(id) {
 }
 let tween = null;
 const eye = { yaw: 0, pitch: 4 };
+const EYE_H = 0.12;
+function setGround() {
+  if (!has3D) return;
+  const eyeView = S.cam === 'eye';
+  sky.groundDisc.visible = !eyeView; sky.groundPlain.visible = eyeView; sky.obs.visible = !eyeView; sky.horizonRing.visible = !eyeView;
+  for (const g of [sky.groundDisc, sky.groundPlain]) {
+    const m = g.material, see = S.seeThrough;
+    m.uniforms.opacity.value = see ? .62 : 1; m.transparent = see; m.depthWrite = !see; m.needsUpdate = true;
+  }
+}
 function setCam(id, instant) {
   S.cam = id;
   [...els.camSeg.children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === id)));
   if (!has3D) return;
   const p = camPose(id);
   controls.enabled = !(id === 'eye' || id === 'follow');
+  setGround();
   if (id === 'eye') {
     const pr = prayerTimes(); const ref = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R);
     eye.yaw = Math.atan2(ref[0], -ref[2]); eye.pitch = 6;
@@ -1244,7 +1284,7 @@ function setCam(id, instant) {
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function eyeTarget(out) {
   const y = eye.yaw, p = eye.pitch * D2R;
-  return out.set(sin(y) * cos(p), sin(p), -cos(y) * cos(p)).multiplyScalar(5).add(new THREE.Vector3(0, .9, 0));
+  return out.set(sin(y) * cos(p), sin(p), -cos(y) * cos(p)).multiplyScalar(5).add(new THREE.Vector3(0, EYE_H, 0));
 }
 function followPose(outPos, outT) {
   const w = new THREE.Vector3(); earth.pin.getWorldPosition(w);
@@ -1256,13 +1296,13 @@ function followPose(outPos, outT) {
 }
 function stepCamera(now) {
   if (!tween) {
-    if (S.cam === 'eye') { camera.position.set(0, .9, 0); camera.lookAt(eyeTarget(tmpV)); }
+    if (S.cam === 'eye') { camera.position.set(0, EYE_H, 0); camera.lookAt(eyeTarget(tmpV)); }
     else if (S.cam === 'follow') { const p = new THREE.Vector3(), t = new THREE.Vector3(); followPose(p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
     return;
   }
   const k = tween.dur ? Math.min(1, (now - tween.t0) / tween.dur) : 1, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   let to, toT;
-  if (tween.mode === 'eye') { to = new THREE.Vector3(0, .9, 0); toT = eyeTarget(new THREE.Vector3()); }
+  if (tween.mode === 'eye') { to = new THREE.Vector3(0, EYE_H, 0); toT = eyeTarget(new THREE.Vector3()); }
   else if (tween.mode === 'follow') { to = new THREE.Vector3(); toT = new THREE.Vector3(); followPose(to, toT); }
   else { to = tween.to; toT = tween.toT; }
   camera.position.lerpVectors(tween.from, to, e);
@@ -1327,6 +1367,7 @@ function updateTime3D() {
   const alt = Math.asin(v[1]) * R2D;
   sky.sun.position.set(v[0] * R, v[1] * R, v[2] * R);
   sky.domeMat.uniforms.sunAlt.value = alt;
+  sky.groundDisc.material.uniforms.sunAlt.value = alt; sky.groundPlain.material.uniforms.sunAlt.value = alt;
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
   sky.sunLbl.el.textContent = 'Солнце ' + fmtDeg(alt);
   earth.mesh.rotation.y = H;
@@ -1990,6 +2031,7 @@ els.play.addEventListener('click', () => setPlaying(!S.playing));
 document.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => { S.T = (S.T + +b.dataset.tstep / 60 + 24) % 24; onTime(); }));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
+$('seeThrough').addEventListener('change', e => { S.seeThrough = e.target.checked; setGround(); });
 $('axisToggle').addEventListener('change', e => { S.axis = e.target.checked; if (has3D) sky.axis.visible = S.axis; });
 function setLang(l) {
   S.lang = l;
