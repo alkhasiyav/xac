@@ -2683,7 +2683,7 @@ function updatePanelTime() {
 /* ================= Charts ================= */
 function prepCanvas(cv) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = cv.clientWidth || 300, h = +cv.getAttribute('height');
+  const w = cv.clientWidth || 300, h = +(cv.dataset.h || (cv.dataset.h = cv.getAttribute('height')));   // logical height; the attribute becomes the bitmap height
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px'; }
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
   return { x, w, h };
@@ -3357,7 +3357,9 @@ $('lpPlay').addEventListener('click', () => {
 
 /* ================= Loop ================= */
 let last = performance.now(), lpAcc = 0, yearAcc = 0;
+let loopStopped = false;
 function frame(now) {
+  if (loopStopped) return;
   const dt = Math.min(.1, (now - last) / 1000); last = now;
   if (S.playing) {
     S.T = (((S.T + S.dir * dt * S.speed) % 24) + 24) % 24; onTime();
@@ -3448,6 +3450,29 @@ buildSteps();
 if (S.lang !== 'ru') setLang(S.lang);
 goStep(0, true);
 requestAnimationFrame(frame);
+
+/* Hooks for the scripted video renderer (twilight/video): it stops the live loop and drives the scenes frame by frame. */
+window.twilightAPI = {
+  S, CITIES, eye, sky, dateLabel, toClock, toSolar, altAt, dec, hoursFor,
+  stopLoop: () => { loopStopped = true; },
+  setView: v => { S.view = v; },
+  place: () => { updatePanelStatic(); if (has3D) { rebuildSkyPath(); rebuildEarthRing(); } },
+  time: () => { updateTime3D(); updatePanelTime(); },
+  orbitOnly: () => updateOrbit(),
+  setLang, readTokens, drawRace, drawYear, updateLp,
+  cam(mode, pos, target, fov) {
+    tween = null; S.cam = mode; controls.enabled = false; setGround();
+    if (fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    if (pos) { camera.position.set(...pos); controls.target.set(...target); camera.lookAt(controls.target); }
+  },
+  render() {
+    if (!has3D) return;
+    stepCamera(performance.now());
+    renderer.render(S.view === 'sky' ? skyScene : S.view === 'earth' ? earthScene : orbitScene, camera);
+    updateLabels();
+  },
+  resize
+};
 })();
 </script>
 </html>

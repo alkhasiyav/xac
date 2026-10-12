@@ -26,3 +26,6 @@ python3 -m unittest          # тесты
 всё встроено (three.js, шрифты, карта), интернет не нужен; открывается двойным щелчком в Edge, Chrome или Firefox.
 Пересобрать после изменений: `python3 twilight/build_offline.py <папка с npm-пакетами> twilight/offline/twilight-offline.html`
 (инструкция в начале скрипта).
+
+Видео для YouTube: `twilight/video/` — сценарий (`director.js`, `video.css`) и рендер в MP4 1920×1080
+(`node twilight/video/render.js twilight/offline/twilight-offline.html out.mp4 30`, нужны Playwright и ffmpeg).
