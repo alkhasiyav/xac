@@ -408,6 +408,7 @@
           <div class="seg" role="group" aria-label="Сцена">
             <button type="button" data-view="sky" aria-pressed="true">Небо наблюдателя</button>
             <button type="button" data-view="earth" aria-pressed="false">Земля из космоса</button>
+            <button type="button" data-view="orbit" aria-pressed="false">Вокруг Солнца</button>
           </div>
           <div class="seg" role="group" aria-label="Ракурс" id="camSeg"></div>
           <div class="seg" role="group" aria-label="Экран">
@@ -460,6 +461,10 @@
           <button type="button" class="btn small" data-day="172">21 июня</button>
           <button type="button" class="btn small" data-day="266">23 сент.</button>
           <button type="button" class="btn small" data-day="355">21 дек.</button>
+        </div>
+        <div class="row">
+          <button type="button" class="btn small" id="yearBack">◀ Год назад</button>
+          <button type="button" class="btn small" id="yearPlay">▶ Пустить год</button>
         </div>
       </div>
       <div class="field">
@@ -803,7 +808,7 @@ const CITIES = [
 const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const MDAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
 const MONTH_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-function dateLabel(N) { let m = 0; while (N > MDAYS[m]) { N -= MDAYS[m]; m++; } return N + ' ' + MONTHS[m]; }
+function dateLabel(N) { N = Math.min(365, Math.max(1, Math.round(N))); let m = 0; while (N > MDAYS[m]) { N -= MDAYS[m]; m++; } return N + ' ' + MONTHS[m]; }
 const fmtDeg = (x, d = 1) => (x < 0 ? '−' : '') + Math.abs(x).toFixed(d).replace('.', ',') + '°';
 function fmtHM(h) {
   if (!isFinite(h)) return '—';
@@ -826,7 +831,7 @@ const NM = k => NAMES[S.lang][k];
 let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') savedLang = 'av'; } catch (e) {}
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
-  playing: false, dir: 1, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
+  playing: false, dir: 1, speed: 1, yearDir: 0, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
   bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, seeThrough: true
 };
 const city = () => CITIES.find(c => c.id === S.city);
@@ -1106,8 +1111,9 @@ function initEarth() {
   const landTex = new THREE.Texture();
   landTex.generateMipmaps = false; landTex.minFilter = THREE.LinearFilter; landTex.magFilter = THREE.LinearFilter;
   landTex.wrapS = THREE.RepeatWrapping;
-  if (window.LAND_PNG) { const im = new Image(); im.onload = () => { landTex.image = im; landTex.needsUpdate = true; earth.mat.uniforms.hasLand.value = 1; }; im.src = window.LAND_PNG; }
-  earth.mat = new THREE.ShaderMaterial({
+  const earthMats = []; let landReady = false;
+  if (window.LAND_PNG) { const im = new Image(); im.onload = () => { landTex.image = im; landTex.needsUpdate = true; landReady = true; earthMats.forEach(m => { m.uniforms.hasLand.value = 1; }); }; im.src = window.LAND_PNG; }
+  earth.makeMat = () => { const m = new THREE.ShaderMaterial({
     extensions: { derivatives: true },
     uniforms: {
       sunDir: { value: new THREE.Vector3(1, 0, 0) },
@@ -1161,7 +1167,8 @@ function initEarth() {
         col = mix(col, vec3(1.0), g * 0.07 + eq * 0.18);
         gl_FragColor = vec4(col, 1.0);
       }`
-  });
+  }); earthMats.push(m); if (landReady) m.uniforms.hasLand.value = 1; return m; };
+  earth.mat = earth.makeMat();
   earth.mesh = new THREE.Mesh(new THREE.SphereGeometry(ER, 128, 96), earth.mat);
   earth.tilt.add(earth.mesh);
   // thin glowing atmosphere around the globe, brighter on the sunlit side
@@ -1203,6 +1210,56 @@ function initEarth() {
   sun.position.set(70, 0, 0); sun.add(glowSprite('rgba(255,190,90,.7)', 18)); sc.add(sun);
 }
 
+/* ---- Earth around the Sun ---- */
+const orbit = { ghosts: [] };
+let orbitScene;
+const ORB = { r: 34, ER: 3.4, eps: 23.44 };   // sizes exaggerated so the Earth and its tilt are visible
+const eclU = lam => new THREE.Vector3(cos(lam * D2R), 0, -sin(lam * D2R));   // ecliptic direction, +y = north ecliptic pole
+const sunLon = N => 360 * (N - 80) / 365.24;                                   // the Sun's ecliptic longitude, 0 at the March equinox
+const orbitAxis = () => new THREE.Vector3(0, cos(ORB.eps * D2R), -sin(ORB.eps * D2R));   // fixed in space: always toward the Pole Star
+function orientEarth(group, N) {
+  const P = eclU(sunLon(N)).multiplyScalar(-ORB.r); group.position.copy(P);
+  const A = orbitAxis(), sd = P.clone().multiplyScalar(-1).normalize();
+  const x = sd.clone().sub(A.clone().multiplyScalar(sd.dot(A))).normalize();   // local frame as in the globe scene: sun at (cos δ, sin δ, 0)
+  const z = new THREE.Vector3().crossVectors(x, A);
+  group.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, A, z));
+  return sd;
+}
+function axisLine(len, opacity) {
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -len, 0), new THREE.Vector3(0, len, 0)]),
+    new THREE.LineBasicMaterial({ color: 0xc9d1ff, transparent: true, opacity }));
+}
+function initOrbit() {
+  const sc = new THREE.Scene(); orbitScene = sc;
+  sc.add(makeStars(2000, 1500));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(5, 48, 32), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+  sun.add(glowSprite('rgba(255,190,90,.75)', 30)); sc.add(sun);
+  orbit.sunLbl = addLabel(NM('sun'), 'plain', 'orbit', v => v.set(0, 7, 0));
+  const pts = []; for (let i = 0; i < 256; i++) pts.push(eclU(i / 256 * 360).multiplyScalar(ORB.r));
+  sc.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x8fa0d8, transparent: true, opacity: .45 })));
+  for (const [N, lab] of [[80, '21 марта'], [172, '21 июня'], [266, '23 сентября'], [355, '21 декабря']]) {
+    const g = new THREE.Group(), m = earth.makeMat();
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2, 48, 32), m); g.add(mesh); g.add(axisLine(3.4, .6));
+    m.uniforms.sunDir.value.copy(orientEarth(g, N));
+    sc.add(g); orbit.ghosts.push({ g, m, N });
+    addLabel(lab, 'plain', 'orbit', v => v.copy(g.position).add(new THREE.Vector3(0, -4.2, 0)), () => g.visible);
+  }
+  orbit.group = new THREE.Group(); sc.add(orbit.group);
+  orbit.mat = earth.makeMat();
+  orbit.mesh = new THREE.Mesh(new THREE.SphereGeometry(ORB.ER, 96, 64), orbit.mat); orbit.group.add(orbit.mesh);
+  orbit.group.add(axisLine(ORB.ER * 1.7, .8));
+  orbit.ringHolder = new THREE.Group(); orbit.ringHolder.scale.setScalar(ORB.ER / earth.R); orbit.group.add(orbit.ringHolder);
+  orbit.pin = new THREE.Mesh(new THREE.ConeGeometry(.1, .4, 10), new THREE.MeshBasicMaterial({ color: 0xffb36b }));
+  orbit.mesh.add(orbit.pin);
+  orbit.youLbl = addLabel('', 'you', 'orbit', v => { v.set(0, .35, 0); orbit.pin.localToWorld(v); });
+}
+function updateOrbit() {
+  if (!has3D) return;
+  orbit.mat.uniforms.sunDir.value.copy(orientEarth(orbit.group, S.N));
+  orbit.mesh.rotation.y = (toSolar(S.T) - 12) * 15 * D2R;
+  orbit.ghosts.forEach(o => { o.g.visible = Math.abs(((S.N - o.N + 182.5) % 365 + 365) % 365 - 182.5) > 14; });   // hide the marker the Earth is passing
+}
+
 function rebuildEarthRing() {
   const h = earth.ringHolder; while (h.children.length) { const c = h.children.pop(); c.geometry.dispose(); }
   const d = dec(), B = BAND_HEX(), ER = earth.R * 1.012, f = S.lat * D2R;
@@ -1217,17 +1274,31 @@ function rebuildEarthRing() {
     const k = .9; col[i * 3] = c.r * k + (1 - k); col[i * 3 + 1] = c.g * k + (1 - k); col[i * 3 + 2] = c.b * k + (1 - k);
   }
   tube.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  h.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ vertexColors: true })));
+  const ringMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+  h.add(new THREE.Mesh(tube, ringMat));
+  const oh = orbit.ringHolder; while (oh.children.length) oh.remove(oh.children[0]);
+  oh.add(new THREE.Mesh(tube, ringMat));
   earth.tilt.rotation.z = -d * D2R;
   const cc = city(); if (cc && cc.lon != null) S.lonRef = cc.lon;
   earth.mat.uniforms.lonRef.value = (S.lonRef || 0) * D2R;
+  orbit.mat.uniforms.lonRef.value = (S.lonRef || 0) * D2R;
+  orbit.ghosts.forEach(o => { o.m.uniforms.lonRef.value = (S.lonRef || 0) * D2R; });
+  orbit.pin.position.set(ORB.ER * cos(f), ORB.ER * sin(f), 0);
+  orbit.pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(cos(f), sin(f), 0));
+  updateOrbit();
   earth.pin.position.set(earth.R * cos(f), earth.R * sin(f), 0);
   earth.pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(cos(f), sin(f), 0));
-  const c = city(); earth.youLbl.el.textContent = (c && c.lat != null && c.id !== 'equator' ? c.name : 'Вы здесь');
+  const c = city(); earth.youLbl.el.textContent = orbit.youLbl.el.textContent = (c && c.lat != null && c.id !== 'equator' ? c.name : 'Вы здесь');
 }
 
 /* ---- cameras ---- */
 const CAMS = {
+  orbit: [
+    { id: 'oview', name: 'Общий вид' },
+    { id: 'oside', name: 'Сбоку' },
+    { id: 'otop', name: 'Сверху' },
+    { id: 'onear', name: 'Рядом с Землёй' }
+  ],
   sky: [
     { id: 'overview', name: 'Общий вид' },
     { id: 'side', name: 'Сбоку' },
@@ -1252,6 +1323,10 @@ function camPose(id) {
     case 'pole': { const d = dec() * D2R; return { pos: [sin(d) * 22, cos(d) * 22, .01], target: [0, 0, 0], fov: 40 }; }
     case 'sunview': return { pos: [24, 3, 0], target: [0, 0, 0], fov: 40 };
     case 'follow': return { pos: null, target: null, fov: 45 };
+    case 'onear': return { pos: null, target: null, fov: 45 };
+    case 'oview': return { pos: [52, 34, 62], target: [0, 0, 0], fov: 45 };
+    case 'oside': return { pos: [100, 8, 24], target: [0, 0, 0], fov: 34 };
+    case 'otop': return { pos: [0, 105, .01], target: [0, 0, 0], fov: 45 };
   }
 }
 let tween = null;
@@ -1271,13 +1346,13 @@ function setCam(id, instant) {
   [...els.camSeg.children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === id)));
   if (!has3D) return;
   const p = camPose(id);
-  controls.enabled = !(id === 'eye' || id === 'follow');
+  controls.enabled = !(id === 'eye' || id === 'follow' || id === 'onear');
   setGround();
   if (id === 'eye') {
     const pr = prayerTimes(); const ref = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R);
     eye.yaw = Math.atan2(ref[0], -ref[2]); eye.pitch = 6;
   }
-  if (id === 'follow' || id === 'eye') { tween = { mode: id, t0: performance.now(), dur: instant ? 0 : 900, from: camera.position.clone(), fromT: controls.target.clone(), fov0: camera.fov, fov1: p.fov }; return; }
+  if (id === 'follow' || id === 'eye' || id === 'onear') { tween = { mode: id, t0: performance.now(), dur: instant ? 0 : 900, from: camera.position.clone(), fromT: controls.target.clone(), fov0: camera.fov, fov1: p.fov }; return; }
   const to = new THREE.Vector3(...p.pos), tgt = new THREE.Vector3(...p.target);
   if (camera.aspect < 1) to.sub(tgt).multiplyScalar(Math.min(1.9, 1 / camera.aspect)).add(tgt); // narrow screens: step back
   tween = { t0: performance.now(), dur: instant || reduceMotion ? 0 : 1000, from: camera.position.clone(), to,
@@ -1287,6 +1362,11 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 function eyeTarget(out) {
   const y = eye.yaw, p = eye.pitch * D2R;
   return out.set(sin(y) * cos(p), sin(p), -cos(y) * cos(p)).multiplyScalar(5).add(new THREE.Vector3(0, EYE_H, 0));
+}
+function nearPose(outPos, outT) {
+  const P = orbit.group.position, tan = new THREE.Vector3(-P.z, 0, P.x).normalize();
+  outPos.copy(P).addScaledVector(tan, 12).addScaledVector(P.clone().normalize(), 4).add(new THREE.Vector3(0, 4.5, 0));
+  outT.copy(P);
 }
 function followPose(outPos, outT) {
   const w = new THREE.Vector3(); earth.pin.getWorldPosition(w);
@@ -1299,13 +1379,13 @@ function followPose(outPos, outT) {
 function stepCamera(now) {
   if (!tween) {
     if (S.cam === 'eye') { camera.position.set(0, EYE_H, 0); camera.lookAt(eyeTarget(tmpV)); }
-    else if (S.cam === 'follow') { const p = new THREE.Vector3(), t = new THREE.Vector3(); followPose(p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
+    else if (S.cam === 'follow' || S.cam === 'onear') { const p = new THREE.Vector3(), t = new THREE.Vector3(); (S.cam === 'onear' ? nearPose : followPose)(p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
     return;
   }
   const k = tween.dur ? Math.min(1, (now - tween.t0) / tween.dur) : 1, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   let to, toT;
   if (tween.mode === 'eye') { to = new THREE.Vector3(0, EYE_H, 0); toT = eyeTarget(new THREE.Vector3()); }
-  else if (tween.mode === 'follow') { to = new THREE.Vector3(); toT = new THREE.Vector3(); followPose(to, toT); }
+  else if (tween.mode === 'follow' || tween.mode === 'onear') { to = new THREE.Vector3(); toT = new THREE.Vector3(); (tween.mode === 'onear' ? nearPose : followPose)(to, toT); }
   else { to = tween.to; toT = tween.toT; }
   camera.position.lerpVectors(tween.from, to, e);
   controls.target.lerpVectors(tween.fromT, toT, e);
@@ -1346,7 +1426,7 @@ function init3D() {
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = .08; controls.minDistance = 2; controls.maxDistance = 700;
   controls.target.set(0, -1.2, 0);
-  initSky(); initEarth();
+  initSky(); initEarth(); initOrbit();
   // drag to look around in eye mode
   let drag = null;
   renderer.domElement.addEventListener('pointerdown', e => { if (S.cam === 'eye') { drag = { x: e.clientX, y: e.clientY, yaw: eye.yaw, pitch: eye.pitch }; renderer.domElement.setPointerCapture(e.pointerId); } });
@@ -1373,6 +1453,7 @@ function updateTime3D() {
   sky.domeMat.uniforms.sunDir.value.set(v[0], v[1], v[2]);
   sky.sunLbl.el.textContent = NM('sun') + ' ' + fmtDeg(alt);
   earth.mesh.rotation.y = H;
+  updateOrbit();
 }
 
 /* ================= Panel ================= */
@@ -1388,6 +1469,7 @@ function updatePanelStatic() {
   const low = altAt(lat, d, 0);
   const setAngle = Math.acos(Math.min(1, sin(lat * D2R) / cos(d * D2R))) * R2D;
   const rows = [
+    ['Длина дня', isNaN(hr) ? (low > 0 ? '24 ч' : '0 ч') : fmtDur(2 * hr)],
     ['Солнце в полночь', fmtDeg(low)],
     ['Наклон пути к горизонту', isNaN(hr) ? '—' : fmtDeg(setAngle, 0)],
     ['Закат → конец сумерек (−18°)', isNaN(hr) ? '—' : isNaN(hi) ? 'не кончаются' : fmtDur(hi - hr)],
@@ -1982,6 +2064,8 @@ const STEPS = [
     text: () => { const d = decl(80); return `Тот же день, та же «толщина» слоёв: 18°. Но на широте Казани путь Солнца наклонён к горизонту всего на ${Math.round(Math.acos(sin(55.79 * D2R) / cos(d * D2R)) * R2D)}°. Солнце пересекает слои наискось, путь получается длиннее: до −18° уже ${fmtDur(hoursFor(55.79, d, -18) - hoursFor(55.79, d, DEPTH.sunrise))}. Пунктиром показан путь Солнца на экваторе.`; } },
   { title: 'Казань, июнь: сумерки не кончаются', set: { city: 'kazan', N: 172, T: 22.5, view: 'sky', cam: 'side', play: true, speed: .5 },
     text: () => `Летом путь поднят выше. В полночь Солнце опускается всего до ${fmtDeg(altAt(55.79, decl(172), 0))}, в слой астрономических сумерек не заходит и снова поднимается. Небо на севере светится всю ночь, вечерние сумерки переходят в утренние. Сколько ни жди, признак −18° в такую ночь не наступит. С начала мая до начала августа так каждую ночь.` },
+  { title: 'Почему меняются времена года', set: { city: 'khasavyurt', N: 172, T: 12, view: 'orbit', cam: 'oview', year: true },
+    text: () => 'Земля за год обходит вокруг Солнца. Её ось наклонена на 23,4° и всё время смотрит в одну и ту же сторону, на Полярную звезду. В июне северное полушарие повёрнуто к Солнцу: Солнце поднимается высоко, день длинный, ночь короткая, и ночью Солнце уходит под горизонт неглубоко. В декабре северное полушарие отвёрнуто от Солнца: Солнце низко, день короткий. В марте и сентябре ось наклонена вбок, и день почти равен ночи. Дело именно в наклоне, а не в расстоянии: в январе Земля даже немного ближе к Солнцу, чем в июле.' },
   { title: 'Из космоса: полоса сумерек и путь города', set: { city: 'kazan', N: 172, T: 0, view: 'earth', cam: 'terminator', play: true, speed: 1 },
     text: () => 'Теперь та же картина из космоса. Цветные полосы на Земле — зоны сумерек. Их ширина везде одинакова: 18°, около 2000 км. Светлое кольцо — путь города за сутки, пока Земля вращается. Летом северный полюс наклонён к Солнцу, и кольцо Казани проходит по самой полосе сумерек, не заходя в тёмную ночь.' },
   { title: 'Вид над полюсом: летом и зимой', set: { city: 'kazan', N: 172, T: 0, view: 'earth', cam: 'pole', play: true, speed: 1 },
@@ -2013,6 +2097,7 @@ function goStep(i, initial) {
   S.T = toClock(st.T); S.T = ((S.T % 24) + 24) % 24;
   if (st.speed) { S.speed = st.speed; els.speed.value = String(st.speed); }
   setPlaying(!!st.play && !initial && !reduceMotion);
+  setYearPlay(st.year && !initial && !reduceMotion ? 1 : 0);
   setView(st.view, st.cam, initial);
   onTime();
   $('capTitle').textContent = (stepIdx + 1) + '. ' + s.title;
@@ -2041,8 +2126,16 @@ function setPlaying(p, dir = 1) {
 
 els.city.addEventListener('change', () => { S.city = els.city.value; const c = city(); if (c.lat != null) S.lat = c.lat; onPlace(); });
 els.lat.addEventListener('input', () => { S.lat = +els.lat.value; S.city = 'custom'; els.city.value = 'custom'; onPlace(); });
-els.day.addEventListener('input', () => { S.N = +els.day.value; onPlace(); });
-document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { S.N = +b.dataset.day; onPlace(); }));
+els.day.addEventListener('input', () => { setYearPlay(0); S.N = +els.day.value; onPlace(); });
+function setYearPlay(dir) {
+  S.yearDir = dir;
+  if (!dir) S.N = Math.min(365, Math.max(1, Math.round(S.N)));
+  $('yearPlay').textContent = dir > 0 ? '❚❚ Пауза' : '▶ Пустить год';
+  $('yearBack').textContent = dir < 0 ? '❚❚ Пауза' : '◀ Год назад';
+}
+$('yearPlay').addEventListener('click', () => { setYearPlay(S.yearDir > 0 ? 0 : 1); if (!S.yearDir) onPlace(); });
+$('yearBack').addEventListener('click', () => { setYearPlay(S.yearDir < 0 ? 0 : -1); if (!S.yearDir) onPlace(); });
+document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { setYearPlay(0); S.N = +b.dataset.day; onPlace(); }));
 els.time.addEventListener('input', () => { S.T = +els.time.value; onTime(); });
 els.play.addEventListener('click', () => setPlaying(!(S.playing && S.dir > 0), 1));
 $('playBack').addEventListener('click', () => setPlaying(!(S.playing && S.dir < 0), -1));
@@ -2056,7 +2149,7 @@ function setLang(l) {
   try { localStorage.setItem('prayerNames', l); } catch (e) {}
   document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   document.querySelectorAll('[data-pname]').forEach(h => { h.textContent = NM(h.dataset.pname); });
-  if (has3D) earth.lightLbl.el.textContent = NM('sunlight');
+  if (has3D) { earth.lightLbl.el.textContent = NM('sunlight'); orbit.sunLbl.el.textContent = NM('sun'); }
   onPlace();
 }
 document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
@@ -2084,11 +2177,18 @@ $('lpPlay').addEventListener('click', () => {
 });
 
 /* ================= Loop ================= */
-let last = performance.now(), lpAcc = 0;
+let last = performance.now(), lpAcc = 0, yearAcc = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now;
   if (S.playing) {
     S.T = (((S.T + S.dir * dt * S.speed) % 24) + 24) % 24; onTime();
+  }
+  if (S.yearDir) {
+    S.N += S.yearDir * dt * 24;                       // about 24 days per second
+    if (S.N > 365.49) S.N -= 365; if (S.N < .51) S.N += 365;
+    els.day.value = S.N; els.dayOut.textContent = dateLabel(S.N);
+    updateOrbit();
+    yearAcc += dt; if (yearAcc > .3) { yearAcc = 0; onPlace(); }
   }
   if (SH.playing) {
     const r = shRange();
@@ -2105,7 +2205,7 @@ function frame(now) {
   if (has3D) {
     stepCamera(now);
     if (controls.enabled && !tween) controls.update();
-    renderer.render(S.view === 'sky' ? skyScene : earthScene, camera);
+    renderer.render(S.view === 'sky' ? skyScene : S.view === 'earth' ? earthScene : orbitScene, camera);
     updateLabels();
   }
   requestAnimationFrame(frame);
