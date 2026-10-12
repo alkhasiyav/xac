@@ -935,7 +935,7 @@ function updateLabels() {
 
 function initSky() {
   const sc = new THREE.Scene(); skyScene = sc;
-  sc.add(makeStars(1400, 400));
+  sc.add(makeStars(1400, 1500));
   // celestial sphere shell, coloured by altitude
   sky.domeMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -1069,7 +1069,7 @@ function rebuildSkyPath() {
 
 function initEarth() {
   const sc = new THREE.Scene(); earthScene = sc;
-  sc.add(makeStars(1800, 400));
+  sc.add(makeStars(1800, 1500));
   const ER = 5; earth.R = ER;
   earth.tilt = new THREE.Group(); sc.add(earth.tilt);
   const landTex = new THREE.Texture();
@@ -1214,7 +1214,7 @@ function camPose(id) {
   const lat = S.lat * D2R;
   switch (id) {
     case 'overview': return { pos: [16, 9.5, 17], target: [0, -1.2, 0], fov: 45 };
-    case 'side': return { pos: [62, 0, 0], target: [0, -1.5, 0], fov: 25 };
+    case 'side': return { pos: [320, 0, 0], target: [0, -1.5, 0], fov: 4.9 };   // far and narrow: almost no perspective, circles seen edge-on look like lines
     case 'top': return { pos: [0, 30, .01], target: [0, 0, 0], fov: 45 };
     case 'eye': return { pos: [0, .9, 0], target: null, fov: 70 };
     case 'terminator': return { pos: [-4, 11, 16], target: [0, 0, 0], fov: 40 };
@@ -1299,10 +1299,10 @@ function init3D() {
   renderer.setClearColor(0x060914, 1);
   renderer.domElement.className = 'gl';
   els.viewport.insertBefore(renderer.domElement, els.viewport.firstChild);
-  camera = new THREE.PerspectiveCamera(45, 1, .05, 2000);
+  camera = new THREE.PerspectiveCamera(45, 1, .05, 5000);
   camera.position.set(16, 9.5, 17);
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = .08; controls.minDistance = 2; controls.maxDistance = 120;
+  controls.enableDamping = true; controls.dampingFactor = .08; controls.minDistance = 2; controls.maxDistance = 700;
   controls.target.set(0, -1.2, 0);
   initSky(); initEarth();
   // drag to look around in eye mode
