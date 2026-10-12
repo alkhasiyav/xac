@@ -466,7 +466,8 @@
         <div class="field-head"><label for="time">Время</label><output id="timeOut" for="time">—</output></div>
         <input type="range" id="time" min="0" max="23.99" step="0.01" value="22">
         <div class="row">
-          <button type="button" class="btn small primary" id="play">▶ Пустить время</button>
+          <button type="button" class="btn small" id="playBack" title="Клавиша R">◀ Назад</button>
+          <button type="button" class="btn small primary" id="play" title="Пробел">▶ Вперёд</button>
           <select id="speed" aria-label="Скорость" style="width:auto">
             <option value="0.016667">1 мин/с</option>
             <option value="0.083333">5 мин/с</option>
@@ -694,6 +695,7 @@
           <input type="range" id="shTime" min="6" max="18" step="0.01" value="15">
         </div>
         <div class="row">
+          <button type="button" class="btn" id="shBack">◀ Назад</button>
           <button type="button" class="btn primary" id="shPlay">▶ Провести день</button>
           <button type="button" class="btn" id="shToAsr">К асру</button>
         </div>
@@ -824,7 +826,7 @@ const NM = k => NAMES[S.lang][k];
 let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') savedLang = 'av'; } catch (e) {}
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
-  playing: false, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
+  playing: false, dir: 1, speed: 1, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
   bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, seeThrough: true
 };
 const city = () => CITIES.find(c => c.id === S.city);
@@ -1788,7 +1790,12 @@ function updateLp() {
 }
 
 /* ================= Shadow (zuhr & asr) ================= */
-const SH = { T: 15, playing: false };
+const SH = { T: 15, playing: false, dir: 1 };
+function shSetPlaying(p, dir = 1) {
+  SH.playing = p; SH.dir = dir;
+  $('shPlay').textContent = p && dir > 0 ? '❚❚ Пауза' : '▶ Провести день';
+  $('shBack').textContent = p && dir < 0 ? '❚❚ Пауза' : '◀ Назад';
+}
 function shRange() {
   const d = dec(), hr = hoursFor(S.lat, d, DEPTH.sunrise);
   if (isNaN(hr)) return altAt(S.lat, d, 0) > 0 ? [toClock(0), toClock(23.99)] : null;
@@ -1943,18 +1950,24 @@ function drawShTop(cv, tip, L0, a1, a2, r) {
   x.textBaseline = 'alphabetic';
 }
 
-$('shTime').addEventListener('input', e => { SH.T = +e.target.value; SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow(); });
+$('shTime').addEventListener('input', e => { SH.T = +e.target.value; shSetPlaying(false); drawShadow(); });
 $('shPlay').addEventListener('click', () => {
   const r = shRange(); if (!r) return;
-  SH.playing = !SH.playing;
-  if (SH.playing && SH.T >= r[1] - .05) SH.T = r[0];
-  $('shPlay').textContent = SH.playing ? '❚❚ Пауза' : '▶ Провести день';
+  const on = !(SH.playing && SH.dir > 0);
+  if (on && SH.T >= r[1] - .05) SH.T = r[0];
+  shSetPlaying(on, 1);
+});
+$('shBack').addEventListener('click', () => {
+  const r = shRange(); if (!r) return;
+  const on = !(SH.playing && SH.dir < 0);
+  if (on && SH.T <= r[0] + .05) SH.T = r[1];
+  shSetPlaying(on, -1);
 });
 document.querySelectorAll('[data-shstep]').forEach(b => b.addEventListener('click', () => {
   const r = shRange(); if (!r) return;
-  SH.T = Math.max(r[0], Math.min(r[1], SH.T + +b.dataset.shstep / 60)); SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow();
+  SH.T = Math.max(r[0], Math.min(r[1], SH.T + +b.dataset.shstep / 60)); shSetPlaying(false); drawShadow();
 }));
-$('shToAsr').addEventListener('click', () => { const a = shAsr(1); if (isFinite(a)) { SH.T = toClock(a); SH.playing = false; $('shPlay').textContent = '▶ Провести день'; drawShadow(); } });
+$('shToAsr').addEventListener('click', () => { const a = shAsr(1); if (isFinite(a)) { SH.T = toClock(a); shSetPlaying(false); drawShadow(); } });
 
 /* ================= Story ================= */
 const STEPS = [
@@ -2020,14 +2033,19 @@ function onPlace() {
 function onTime() {
   updateTime3D(); updatePanelTime();
 }
-function setPlaying(p) { S.playing = p; els.play.textContent = p ? '❚❚ Пауза' : '▶ Пустить время'; }
+function setPlaying(p, dir = 1) {
+  S.playing = p; S.dir = dir;
+  els.play.textContent = p && dir > 0 ? '❚❚ Пауза' : '▶ Вперёд';
+  $('playBack').textContent = p && dir < 0 ? '❚❚ Пауза' : '◀ Назад';
+}
 
 els.city.addEventListener('change', () => { S.city = els.city.value; const c = city(); if (c.lat != null) S.lat = c.lat; onPlace(); });
 els.lat.addEventListener('input', () => { S.lat = +els.lat.value; S.city = 'custom'; els.city.value = 'custom'; onPlace(); });
 els.day.addEventListener('input', () => { S.N = +els.day.value; onPlace(); });
 document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { S.N = +b.dataset.day; onPlace(); }));
 els.time.addEventListener('input', () => { S.T = +els.time.value; onTime(); });
-els.play.addEventListener('click', () => setPlaying(!S.playing));
+els.play.addEventListener('click', () => setPlaying(!(S.playing && S.dir > 0), 1));
+$('playBack').addEventListener('click', () => setPlaying(!(S.playing && S.dir < 0), -1));
 document.querySelectorAll('[data-tstep]').forEach(b => b.addEventListener('click', () => { S.T = (S.T + +b.dataset.tstep / 60 + 24) % 24; onTime(); }));
 els.speed.addEventListener('change', () => { S.speed = +els.speed.value; });
 els.compare.addEventListener('change', () => { S.compare = els.compare.checked; onPlace(); });
@@ -2070,12 +2088,12 @@ let last = performance.now(), lpAcc = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now;
   if (S.playing) {
-    S.T = (S.T + dt * S.speed + 24) % 24; onTime();
+    S.T = (((S.T + S.dir * dt * S.speed) % 24) + 24) % 24; onTime();
   }
   if (SH.playing) {
     const r = shRange();
     if (!r) SH.playing = false;
-    else { SH.T += dt * .8; if (SH.T >= r[1]) { SH.T = r[1]; SH.playing = false; $('shPlay').textContent = '▶ Провести день'; } drawShadow(); }
+    else { SH.T += SH.dir * dt * .8; if (SH.T >= r[1] || SH.T <= r[0]) { SH.T = Math.max(r[0], Math.min(r[1], SH.T)); shSetPlaying(false); } drawShadow(); }
   }
   if (lpPlaying) {
     lpAcc += dt;
@@ -2142,7 +2160,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !(document.fullscreenElement || document.webkitFullscreenElement)) setFull(false);
   else if (e.key === 'ArrowRight' || e.key === 'PageDown') { goStep(stepIdx + 1); e.preventDefault(); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { goStep(stepIdx - 1); e.preventDefault(); }
-  else if (e.key === ' ' && t.tagName !== 'BUTTON') { setPlaying(!S.playing); e.preventDefault(); }
+  else if (e.key === ' ' && t.tagName !== 'BUTTON') { setPlaying(!(S.playing && S.dir > 0), 1); e.preventDefault(); }
+  else if (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') { setPlaying(!(S.playing && S.dir < 0), -1); e.preventDefault(); }
 });
 
 init3D();
