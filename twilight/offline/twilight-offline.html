@@ -2473,12 +2473,12 @@ function initOrbit() {
   orbit.sunLbl = addLabel(NM('sun'), 'plain', 'orbit', v => v.set(0, 7, 0));
   const pts = []; for (let i = 0; i < 256; i++) pts.push(eclU(i / 256 * 360).multiplyScalar(ORB.r));
   sc.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x8fa0d8, transparent: true, opacity: .45 })));
+  // only small marks on the orbit for the solstices and equinoxes: there is one Earth
   for (const [N, lab] of [[80, '21 марта'], [172, '21 июня'], [266, '23 сентября'], [355, '21 декабря']]) {
-    const g = new THREE.Group(), m = earth.makeMat();
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(2, 48, 32), m); g.add(mesh); g.add(axisLine(3.4, .6));
-    m.uniforms.sunDir.value.copy(orientEarth(g, N));
-    sc.add(g); orbit.ghosts.push({ g, m, N });
-    addLabel(lab, 'plain', 'orbit', v => v.copy(g.position).add(new THREE.Vector3(0, -4.2, 0)), () => g.visible);
+    const g = new THREE.Group(); orientEarth(g, N);
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(.45, 16, 12), new THREE.MeshBasicMaterial({ color: 0x8fa0d8 })));
+    sc.add(g);
+    addLabel(lab, 'plain', 'orbit', v => v.copy(g.position).add(new THREE.Vector3(0, -2.2, 0)));
   }
   orbit.group = new THREE.Group(); sc.add(orbit.group);
   orbit.mat = earth.makeMat();
