@@ -456,6 +456,8 @@
       <div class="field">
         <div class="field-head"><label for="day">Дата</label><output id="dayOut" for="day">—</output></div>
         <input type="range" id="day" min="1" max="365" step="1" value="172">
+        <div class="row" style="align-items:center;gap:10px"><label for="year" class="muted" style="font-size:13.5px">Год (для Луны):</label>
+          <select id="year" style="width:auto"><option>2025</option><option selected>2026</option><option>2027</option><option>2028</option><option>2029</option><option>2030</option></select></div>
         <div class="row">
           <button type="button" class="btn small" data-day="80">21 марта</button>
           <button type="button" class="btn small" data-day="172">21 июня</button>
@@ -740,26 +742,39 @@
       </div>
     </div>
     <div class="fig">
-      <div class="fig-title">Луна вокруг Земли и её фазы</div>
-      <canvas class="chart" id="moonOrbit" height="380" aria-label="Схема: Луна вокруг Земли и фазы Луны"></canvas>
-      <div class="sh-controls">
-        <div class="field">
-          <div class="field-head"><label for="moonDay">День лунного месяца</label><output id="moonDayOut">2</output></div>
-          <input type="range" id="moonDay" min="0" max="29.5" step="0.1" value="2">
+      <div class="fig-title">Смотреть в 3D</div>
+      <div class="field">
+        <span class="lab">Луна вокруг Земли</span>
+        <div class="row">
+          <button type="button" class="btn small" data-moon="phases">Земля и Луна, вид сверху</button>
+          <button type="button" class="btn small" data-moon="month">▶ Прокрутить лунный месяц</button>
+          <button type="button" class="btn small" data-moon="sun">Земля, Луна и Солнце</button>
         </div>
-        <div class="row"><button type="button" class="btn primary" id="moonPlay">▶ Показать месяц</button></div>
       </div>
-    </div>
-    <div class="fig">
-      <div class="fig-title" id="hilalTitle">Где виден молодой месяц</div>
-      <div class="row" role="group" aria-label="Вечер">
-        <button type="button" class="btn small" data-ev="0">6 февраля 2027</button>
-        <button type="button" class="btn small primary" data-ev="1">7 февраля 2027</button>
-        <button type="button" class="btn small" data-ev="2">8 февраля 2027</button>
+      <div class="field">
+        <span class="lab">Молодой месяц 7 февраля 2027 после заката</span>
+        <div class="row">
+          <button type="button" class="btn small" data-moon="sky:makkah">Мекка</button>
+          <button type="button" class="btn small" data-moon="sky:khasavyurt">Хасавюрт</button>
+          <button type="button" class="btn small" data-moon="sky:moscow">Москва</button>
+        </div>
       </div>
-      <canvas class="chart" id="hilalMap" height="420" aria-label="Карта видимости молодого месяца"></canvas>
-      <canvas class="chart" id="hilalSky" height="250" aria-label="Месяц после заката в Мекке, Хасавюрте и Москве"></canvas>
-      <figcaption>Пример: начало Рамадана 1448 года. Новолуние 6 февраля 2027 года в 15:56 по Гринвичу. Зоны рассчитаны по критерию Одеха для момента вскоре после заката в каждом месте; расчёт приблизительный. Ниже — западная часть неба после заката в трёх городах: месяц стоит на разной высоте и наклонён по‑разному.</figcaption>
+      <div class="field">
+        <span class="lab">Где виден молодой месяц: зоны на глобусе</span>
+        <div class="row">
+          <button type="button" class="btn small" data-zone="0">6 февраля 2027</button>
+          <button type="button" class="btn small" data-zone="1">7 февраля 2027</button>
+          <button type="button" class="btn small" data-zone="2">8 февраля 2027</button>
+          <button type="button" class="btn small" data-zone="off">Убрать зоны</button>
+        </div>
+        <div class="keys">
+          <span><i style="background:#4cd07d;height:10px"></i>видно глазом</span>
+          <span><i style="background:#f2c443;height:10px"></i>с трудом, лучше в бинокль</span>
+          <span><i style="background:#f08a4b;height:10px"></i>только в телескоп</span>
+          <span><i style="background:transparent;outline:1px solid var(--line);height:10px"></i>не видно</span>
+        </div>
+      </div>
+      <figcaption>Кнопки переключают 3D‑сцену вверху страницы. Луна везде стоит там, где она была в выбранную дату и время, и освещена Солнцем с той стороны, с какой на самом деле, поэтому фазу видно как в жизни. Размер Луны и расстояние до неё увеличены, чтобы её было видно. Пример: начало Рамадана 1448 года, новолуние 6 февраля 2027 года в 15:56 по Гринвичу. Зоны видимости рассчитаны по критерию Одеха для момента вскоре после заката в каждом месте; расчёт приблизительный.</figcaption>
     </div>
     <div class="prose">
       <h3>Почему лунный календарь в разных странах может отличаться</h3>
@@ -874,7 +889,7 @@ let savedLang = 'ru'; try { if (localStorage.getItem('prayerNames') === 'av') sa
 const S = {
   city: 'khasavyurt', lat: 43.25, N: 172, T: 23.0, view: 'sky', cam: 'overview',
   playing: false, dir: 1, speed: 1, yearDir: 0, compare: true, fajrA: 18, ishaA: 18, asrK: 1,
-  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, groundT: 40
+  bortle: 7, depr: 16, lpMode: 'dawn', haze: 1, moon: 0, lang: savedLang, axis: false, groundT: 40, year: 2026, yearSpeed: 24
 };
 const city = () => CITIES.find(c => c.id === S.city);
 const dec = () => decl(S.N);
@@ -1159,13 +1174,13 @@ function initEarth() {
     extensions: { derivatives: true },
     uniforms: {
       sunDir: { value: new THREE.Vector3(1, 0, 0) },
-      landMap: { value: landTex }, hasLand: { value: 0 }, lonRef: { value: 0 }, bands: { value: 1 },
+      landMap: { value: landTex }, hasLand: { value: 0 }, lonRef: { value: 0 }, bands: { value: 1 }, zoneTex: { value: null }, zoneOn: { value: 0 },
       cCivil: { value: hex(C.civil) }, cNaut: { value: hex(C.naut) }, cAstro: { value: hex(C.astro) }
     },
     vertexShader: 'varying vec3 vN; varying vec3 vL; varying vec3 vW; void main(){ vN = normalize(mat3(modelMatrix) * normal); vL = position; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: `
       uniform vec3 sunDir, cCivil, cNaut, cAstro;
-      uniform sampler2D landMap; uniform float hasLand, lonRef, bands;
+      uniform sampler2D landMap, zoneTex; uniform float hasLand, lonRef, bands, zoneOn;
       varying vec3 vN; varying vec3 vL; varying vec3 vW;
       const float PI = 3.14159265;
       float grid(float v, float step){ float f = abs(fract(v/step + 0.5) - 0.5) * step; float w = fwidth(v) * 0.8; return 1.0 - smoothstep(0.0, w, f); }
@@ -1202,6 +1217,9 @@ function initEarth() {
         float inBand = step(-18.0, alt) * step(alt, 0.0);
         col = mix(col, band, inBand * 0.55 * bands);
         col = mix(col, col * 0.55 + vec3(0.01, 0.015, 0.04), step(alt, -18.0));
+        if (zoneOn > 0.5 && lat < 69.0 && lat > -58.0) {   // where the young crescent can be seen (one evening, local times)
+          vec4 z = texture2D(zoneTex, vec2(uv.x, (lat + 58.0) / 127.0)); col = mix(col, z.rgb, z.a * 0.62);
+        }
         // graticule
         float lonD = degrees(atan(p.z, p.x));
         float g = max(grid(lat, 15.0), grid(lonD, 15.0) * step(alat, 80.0));
@@ -1256,7 +1274,7 @@ function initEarth() {
 /* ---- Earth around the Sun ---- */
 const orbit = { ghosts: [] };
 let orbitScene;
-const ORB = { r: 34, ER: 3.4, eps: 23.44 };   // sizes exaggerated so the Earth and its tilt are visible
+const ORB = { r: 34, ER: 3.4, eps: 23.44, moonR: 9 };   // sizes exaggerated so the Earth and its tilt are visible
 const eclU = lam => new THREE.Vector3(cos(lam * D2R), 0, -sin(lam * D2R));   // ecliptic direction, +y = north ecliptic pole
 const sunLon = N => 360 * (N - 80) / 365.24;                                   // the Sun's ecliptic longitude, 0 at the March equinox
 const orbitAxis = () => new THREE.Vector3(0, cos(ORB.eps * D2R), -sin(ORB.eps * D2R));   // fixed in space: always toward the Pole Star
@@ -1301,6 +1319,71 @@ function updateOrbit() {
   orbit.mat.uniforms.sunDir.value.copy(orientEarth(orbit.group, S.N));
   orbit.mesh.rotation.y = (toSolar(S.T) - 12) * 15 * D2R;
   orbit.ghosts.forEach(o => { o.g.visible = Math.abs(((S.N - o.N + 182.5) % 365 + 365) % 365 - 182.5) > 14; });   // hide the marker the Earth is passing
+  if (moonInit) updateMoon3D();
+}
+
+/* ---- the Moon in the 3D scenes ---- */
+function moonMaterial(darkAlpha = 1, widen = 0) {   // in the sky the unlit part is almost invisible against the twilight; widen thickens a hair-thin crescent a little
+  return new THREE.ShaderMaterial({
+    transparent: darkAlpha < 1,
+    uniforms: { sunDir: { value: new THREE.Vector3(1, 0, 0) }, darkAlpha: { value: darkAlpha }, widen: { value: widen } },
+    vertexShader: 'varying vec3 vN; varying vec3 vL; void main(){ vN = normalize(mat3(modelMatrix) * normal); vL = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `
+      uniform vec3 sunDir; uniform float darkAlpha, widen; varying vec3 vN; varying vec3 vL;
+      float hash(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }
+      float noise(vec3 p){ vec3 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(mix(hash(i), hash(i+vec3(1,0,0)), f.x), mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
+                   mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x), mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z); }
+      void main(){
+        vec3 p = normalize(vL);
+        float m = noise(p * 2.3) * 0.6 + noise(p * 6.0) * 0.28 + noise(p * 19.0) * 0.12;
+        vec3 base = mix(vec3(0.50, 0.50, 0.49), vec3(0.93, 0.92, 0.88), smoothstep(0.38, 0.68, m));   // dark seas and bright highlands
+        float d = dot(normalize(vN), normalize(sunDir)) + widen;
+        float lit = smoothstep(-0.04, 0.06, d) * (0.55 + 0.45 * max(d, 0.0));
+        gl_FragColor = vec4(min(base * (0.03 + 1.5 * lit) + vec3(0.12) * lit * step(darkAlpha, 0.99), vec3(1.0)), mix(darkAlpha, 1.0, clamp(lit * 4.0, 0.0, 1.0)));
+      }`
+  });
+}
+let moonInit = false;
+function initMoons() {
+  sky.moon = new THREE.Mesh(new THREE.SphereGeometry(.42, 64, 48), moonMaterial(.03)); skyScene.add(sky.moon);
+  sky.moonLbl = addLabel('Луна', 'plain', 'sky', v => v.copy(sky.moon.position).add(new THREE.Vector3(0, .55, 0)), () => S.cam !== 'eye' || camera.fov > 25);
+  earth.moon = new THREE.Mesh(new THREE.SphereGeometry(earth.R * .273, 48, 32), moonMaterial()); earthScene.add(earth.moon);   // true size relative to the Earth
+  earth.moonLbl = addLabel('Луна', 'plain', 'earth', v => v.copy(earth.moon.position).add(new THREE.Vector3(0, 2.2, 0)));
+  orbit.moon = new THREE.Mesh(new THREE.SphereGeometry(ORB.ER * .273 * 1.4, 40, 28), moonMaterial()); orbitScene.add(orbit.moon);
+  orbit.moonLbl = addLabel('Луна', 'plain', 'orbit', v => v.copy(orbit.moon.position).add(new THREE.Vector3(0, 1.8, 0)), () => S.cam === 'omoon' || S.cam === 'onear');
+  const pts = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * Math.PI * 2; pts.push(new THREE.Vector3(ORB.moonR * cos(a), 0, ORB.moonR * sin(a))); }
+  orbit.moonRing = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xc9d1ff, transparent: true, opacity: .35 }));
+  orbitScene.add(orbit.moonRing);
+  moonInit = true;
+}
+function moonJD() {   // the chosen date and clock time as a Julian day
+  const c = city(), ut = c && c.lon != null ? S.T - c.tz : toSolar(S.T) - (S.lonRef || 0) / 15;
+  return Moon.jdOf(S.year, 1, S.N) + ut / 24;
+}
+function updateMoon3D() {
+  if (!has3D || !moonInit) return;
+  const r = Moon.sunMoon(moonJD()), c = city(), lon = c && c.lon != null ? c.lon : (S.lonRef || 0);
+  // sky: the Moon at its real place for the observer, lit from the Sun's direction
+  const mo = Moon.altaz(r.moon, r.gmst, S.lat, lon), hp = Math.asin(6378.14 / r.moon.dist) * R2D, alt = mo.alt - hp * cos(mo.alt * D2R);
+  const dirOf = (a, z) => new THREE.Vector3(sin(z * D2R) * cos(a * D2R), sin(a * D2R), -cos(z * D2R) * cos(a * D2R));
+  sky.moon.position.copy(dirOf(alt, mo.az).multiplyScalar(R * .94));
+  // a crescent a day old is hair-thin; widen it a little (only for thin crescents) so it can be seen on screen
+  const mv = sky.moon.position.clone().normalize(), sv = sky.sun.position.clone().normalize(), el = mv.angleTo(sv) * R2D;
+  const k = .75 * (1 - Math.min(1, Math.max(0, (el - 12) / 33)));
+  sky.moon.material.uniforms.sunDir.value.copy(sv.addScaledVector(mv, -k).normalize());
+  sky.moon.lookAt(0, 0, 0);
+  sky.moonAltAz = { alt, az: mo.az };
+  // Earth from space: same direction from the Earth as in the sky, relative to the Sun
+  const dRA = (r.moon.ra - r.sun.ra) * D2R, dm = r.moon.dec * D2R;
+  const local = new THREE.Vector3(cos(dm) * cos(dRA), sin(dm), -cos(dm) * sin(dRA)).multiplyScalar(26);
+  earth.moon.position.copy(local.applyQuaternion(earth.tilt.quaternion));
+  earth.moon.material.uniforms.sunDir.value.set(1, 0, 0);
+  // around the Sun: the Moon circles the Earth, its angle from the Sun as on that day
+  const lam = sunLon(S.N) + (r.moon.lon - r.sun.lon), bet = r.moon.lat;
+  const P = orbit.group.position, mp = eclU(lam).multiplyScalar(ORB.moonR * cos(bet * D2R)).add(new THREE.Vector3(0, ORB.moonR * sin(bet * D2R), 0)).add(P);
+  orbit.moon.position.copy(mp); orbit.moonRing.position.copy(P);
+  orbit.moon.material.uniforms.sunDir.value.copy(mp).multiplyScalar(-1).normalize();
 }
 
 function rebuildEarthRing() {
@@ -1340,7 +1423,8 @@ const CAMS = {
     { id: 'oview', name: 'Общий вид' },
     { id: 'oside', name: 'Сбоку' },
     { id: 'otop', name: 'Сверху' },
-    { id: 'onear', name: 'Рядом с Землёй' }
+    { id: 'onear', name: 'Рядом с Землёй' },
+    { id: 'omoon', name: 'Земля и Луна' }
   ],
   sky: [
     { id: 'overview', name: 'Общий вид' },
@@ -1367,6 +1451,7 @@ function camPose(id) {
     case 'sunview': return { pos: [24, 3, 0], target: [0, 0, 0], fov: 40 };
     case 'follow': return { pos: null, target: null, fov: 45 };
     case 'onear': return { pos: null, target: null, fov: 45 };
+    case 'omoon': return { pos: null, target: null, fov: 45 };
     case 'oview': return { pos: [52, 34, 62], target: [0, 0, 0], fov: 45 };
     case 'oside': return { pos: [100, 8, 24], target: [0, 0, 0], fov: 34 };
     case 'otop': return { pos: [0, 105, .01], target: [0, 0, 0], fov: 45 };
@@ -1390,13 +1475,13 @@ function setCam(id, instant) {
   [...els.camSeg.children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === id)));
   if (!has3D) return;
   const p = camPose(id);
-  controls.enabled = !(id === 'eye' || id === 'follow' || id === 'onear');
+  controls.enabled = !(id === 'eye' || id === 'follow' || id === 'onear' || id === 'omoon');
   setGround();
   if (id === 'eye') {
     const pr = prayerTimes(); const ref = sunVec(S.lat, dec(), (toSolar(S.T) - 12) * 15 * D2R);
     eye.yaw = Math.atan2(ref[0], -ref[2]); eye.pitch = 6;
   }
-  if (id === 'follow' || id === 'eye' || id === 'onear') { tween = { mode: id, t0: performance.now(), dur: instant ? 0 : 900, from: camera.position.clone(), fromT: controls.target.clone(), fov0: camera.fov, fov1: p.fov }; return; }
+  if (id === 'follow' || id === 'eye' || id === 'onear' || id === 'omoon') { tween = { mode: id, t0: performance.now(), dur: instant ? 0 : 900, from: camera.position.clone(), fromT: controls.target.clone(), fov0: camera.fov, fov1: p.fov }; return; }
   const to = new THREE.Vector3(...p.pos), tgt = new THREE.Vector3(...p.target);
   if (camera.aspect < 1) to.sub(tgt).multiplyScalar(Math.min(1.9, 1 / camera.aspect)).add(tgt); // narrow screens: step back
   tween = { t0: performance.now(), dur: instant || reduceMotion ? 0 : 1000, from: camera.position.clone(), to,
@@ -1407,6 +1492,11 @@ function eyeTarget(out) {
   const y = eye.yaw, p = eye.pitch * D2R;
   return out.set(sin(y) * cos(p), sin(p), -cos(y) * cos(p)).multiplyScalar(5).add(new THREE.Vector3(0, EYE_H, 0));
 }
+function moonPose(outPos, outT) {   // above the Earth, the Sun off to one side
+  const P = orbit.group.position, out = P.clone().normalize();
+  outPos.copy(P).addScaledVector(out, 7).add(new THREE.Vector3(0, 27, 0)); outT.copy(P).addScaledVector(out, -2);
+}
+const FOLLOW = { follow: (a, b) => followPose(a, b), onear: (a, b) => nearPose(a, b), omoon: (a, b) => moonPose(a, b) };
 function nearPose(outPos, outT) {
   const P = orbit.group.position, tan = new THREE.Vector3(-P.z, 0, P.x).normalize();
   outPos.copy(P).addScaledVector(tan, 12).addScaledVector(P.clone().normalize(), 4).add(new THREE.Vector3(0, 4.5, 0));
@@ -1423,13 +1513,13 @@ function followPose(outPos, outT) {
 function stepCamera(now) {
   if (!tween) {
     if (S.cam === 'eye') { camera.position.set(0, EYE_H, 0); camera.lookAt(eyeTarget(tmpV)); }
-    else if (S.cam === 'follow' || S.cam === 'onear') { const p = new THREE.Vector3(), t = new THREE.Vector3(); (S.cam === 'onear' ? nearPose : followPose)(p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
+    else if (FOLLOW[S.cam]) { const p = new THREE.Vector3(), t = new THREE.Vector3(); FOLLOW[S.cam](p, t); camera.position.copy(p); camera.lookAt(t); controls.target.copy(t); }
     return;
   }
   const k = tween.dur ? Math.min(1, (now - tween.t0) / tween.dur) : 1, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   let to, toT;
   if (tween.mode === 'eye') { to = new THREE.Vector3(0, EYE_H, 0); toT = eyeTarget(new THREE.Vector3()); }
-  else if (tween.mode === 'follow' || tween.mode === 'onear') { to = new THREE.Vector3(); toT = new THREE.Vector3(); (tween.mode === 'onear' ? nearPose : followPose)(to, toT); }
+  else if (FOLLOW[tween.mode]) { to = new THREE.Vector3(); toT = new THREE.Vector3(); FOLLOW[tween.mode](to, toT); }
   else { to = tween.to; toT = tween.toT; }
   camera.position.lerpVectors(tween.from, to, e);
   controls.target.lerpVectors(tween.fromT, toT, e);
@@ -1470,12 +1560,13 @@ function init3D() {
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = .08; controls.minDistance = 2; controls.maxDistance = 700;
   controls.target.set(0, -1.2, 0);
-  initSky(); initEarth(); initOrbit();
+  initSky(); initEarth(); initOrbit(); initMoons();
   // drag to look around in eye mode
   let drag = null;
   renderer.domElement.addEventListener('pointerdown', e => { if (S.cam === 'eye') { drag = { x: e.clientX, y: e.clientY, yaw: eye.yaw, pitch: eye.pitch }; renderer.domElement.setPointerCapture(e.pointerId); } });
   renderer.domElement.addEventListener('pointermove', e => { if (drag) { eye.yaw = drag.yaw - (e.clientX - drag.x) * .005; eye.pitch = Math.max(-40, Math.min(80, drag.pitch + (e.clientY - drag.y) * .25)); } });
   renderer.domElement.addEventListener('pointerup', () => { drag = null; });
+  renderer.domElement.addEventListener('wheel', e => { if (S.cam !== 'eye') return; e.preventDefault(); camera.fov = Math.max(6, Math.min(80, camera.fov * (e.deltaY > 0 ? 1.1 : 1 / 1.1))); camera.updateProjectionMatrix(); }, { passive: false });
   // leaving a fixed camera by dragging
   controls.addEventListener('start', () => { tween = null; });
   const ro = new ResizeObserver(resize); ro.observe(els.viewport); resize();
@@ -1935,7 +2026,7 @@ const Moon = (() => {
     const dist = 385001 - 20905 * c(Mp) - 3699 * c(2 * D - Mp) - 2956 * c(2 * D) - 570 * c(2 * Mp) + 246 * c(2 * Mp - 2 * D) - 205 * c(M - 2 * D) - 171 * c(Mp + 2 * D);
     const slon = 280.46646 + 36000.76983 * T + (1.914602 - .004817 * T) * s(M) + .019993 * s(2 * M), eps = (23.439291 - .0130042 * T) * D2R;
     const eq = (lam, bet) => { const l = lam * D2R, b = bet * D2R; return { ra: nrm(Math.atan2(sin(l) * cos(eps) - Math.tan(b) * sin(eps), cos(l)) * R2D), dec: Math.asin(sin(b) * cos(eps) + cos(b) * sin(eps) * sin(l)) * R2D }; };
-    return { moon: { ...eq(mlon, mlat), dist }, sun: eq(slon, 0), gmst: nrm(280.46061837 + 360.98564736629 * (jd - 2451545)) };
+    return { moon: { ...eq(mlon, mlat), dist, lon: nrm(mlon), lat: mlat }, sun: { ...eq(slon, 0), lon: nrm(slon) }, gmst: nrm(280.46061837 + 360.98564736629 * (jd - 2451545)) };
   }
   function altaz(o, gmst, lat, lon) {
     const H = (gmst + lon - o.ra) * D2R, f = lat * D2R, d = o.dec * D2R;
@@ -1966,7 +2057,7 @@ const Moon = (() => {
     for (let lat = 68.5; lat >= -57.5; lat -= 1) for (let lon = -179.5; lon <= 179.5; lon += 1) { const e = evening(ev, lat, lon); g.push([lat, lon, e ? zone(e.V) : 3]); }
     return (grids[ev] = g);
   }
-  return { evening, grid, zone };
+  return { evening, grid, zone, sunMoon, altaz, jdOf };
 })();
 const MOON_PLACES = [['newyork', 40.7, -74], ['rabat', 34.0, -6.8], ['makkah', 21.42, 39.83], ['khasavyurt', 43.25, 46.59], ['moscow', 55.76, 37.62], ['jakarta', -6.2, 106.8]];
 const ZONE_COL = ['#4cd07d', '#f2c443', '#f08a4b', 'rgba(0,0,0,0)'];
@@ -2038,7 +2129,6 @@ function drawHilalMap(x, w, h, ev, L = MOON_TX) {
   x.fillStyle = '#0e1730'; x.fillRect(0, 0, w, h);
   const land = coloredLand();
   if (land) { const sy = (90 - top) / 180 * land.height, sh = (top - bot) / 180 * land.height; x.drawImage(land, 0, sy, land.width, sh, 0, 0, w, mh); }
-  else if (landImg && !landImg._hooked) { landImg._hooked = true; landImg.addEventListener('load', () => drawHilal()); }
   x.globalAlpha = .6; x.imageSmoothingEnabled = true; x.drawImage(zoneImage(ev), X(-180), Y(69), X(180) - X(-180), Y(-58) - Y(69)); x.globalAlpha = 1;
   x.font = `600 13px ${font}`;
   for (const [id, la, lo] of MOON_PLACES) {
@@ -2088,18 +2178,38 @@ function drawHilalSky(x, w, h, ev, L = MOON_TX) {
     x.restore();
   });
 }
-let hilalEv = 1, moonDay = 2, moonPlaying = false;
-function drawMoonSection() { const cv = $('moonOrbit'); cv.dataset.h = (cv.clientWidth || 600) < 640 ? 560 : 380; const { x, w, h } = prepCanvas(cv); drawMoonOrbit(x, w, h, moonDay); $('moonDayOut').textContent = moonDay.toFixed(1).replace('.', ','); }
-function drawHilal() {
-  const mc = $('hilalMap'), sc = $('hilalSky'), cw = mc.clientWidth || 600;
-  mc.dataset.h = Math.round(cw * 128 / 360) + (cw < 640 ? 78 : 34); sc.dataset.h = cw < 640 ? 560 : 250;
-  const a = prepCanvas(mc); drawHilalMap(a.x, a.w, a.h, hilalEv);
-  const b = prepCanvas(sc); drawHilalSky(b.x, b.w, b.h, hilalEv);
+/* the Moon section's buttons drive the 3D stage */
+function zoneTexture(ev) {
+  const t = new THREE.CanvasTexture(zoneImage(ev)); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t;
 }
-$('moonDay').addEventListener('input', e => { moonDay = +e.target.value; moonPlaying = false; $('moonPlay').textContent = '▶ Показать месяц'; drawMoonSection(); });
-$('moonPlay').addEventListener('click', () => { moonPlaying = !moonPlaying; if (moonPlaying && moonDay > 29.3) moonDay = 0; $('moonPlay').textContent = moonPlaying ? '❚❚ Пауза' : '▶ Показать месяц'; });
-document.querySelectorAll('[data-ev]').forEach(b => b.addEventListener('click', () => {
-  hilalEv = +b.dataset.ev; document.querySelectorAll('[data-ev]').forEach(o => o.classList.toggle('primary', o === b)); drawHilal();
+function showZones(ev) {
+  if (!has3D) return;
+  const m = earth.mat.uniforms;
+  if (ev == null) { m.zoneOn.value = 0; return; }
+  m.zoneTex.value = zoneTexture(ev); m.zoneOn.value = 1;
+}
+function toStage() { document.querySelector('.studio').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' }); }
+document.querySelectorAll('[data-moon]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.moon; setPlaying(false); setYearPlay(0);
+  if (k === 'phases' || k === 'month' || k === 'sun') {
+    S.year = 2027; $('year').value = 2027; S.city = 'khasavyurt'; S.lat = city().lat; els.city.value = S.city; S.N = 37; onPlace(); S.T = 18; onTime();
+    setView('orbit', k === 'sun' ? 'oview' : 'omoon');
+    if (k === 'month') setYearPlay(1, 2);
+  } else {
+    const id = k.split(':')[1]; S.year = 2027; $('year').value = 2027; S.city = id; S.lat = city().lat; els.city.value = id; S.N = 38; onPlace();
+    const lat = S.lat, d = decl(38), ss = 12 + hoursFor(lat, d, -0.833); S.T = ((toClock(ss + .4) % 24) + 24) % 24; S.groundT = 0; $('groundT').value = 0; $('groundTOut').textContent = '0% · сплошная';
+    onTime(); setView('sky', 'eye');
+    eye.yaw = sky.moonAltAz.az * D2R; eye.pitch = Math.max(2, sky.moonAltAz.alt);
+    if (tween) tween.fov1 = 9;
+  }
+  toStage();
+}));
+document.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.zone; setPlaying(false); setYearPlay(0);
+  if (k === 'off') { showZones(null); return; }
+  const ev = +k; S.year = 2027; $('year').value = 2027; S.N = 37 + ev; onPlace();
+  const c = city(); S.T = ((13 + (c && c.tz != null ? c.tz : 0)) % 24);   // 13:00 UT: the Atlantic faces the Sun
+  onTime(); showZones(ev); setView('earth', 'sunview'); toStage();
 }));
 
 /* ================= Shadow (zuhr & asr) ================= */
@@ -2357,9 +2467,10 @@ function setPlaying(p, dir = 1) {
 
 els.city.addEventListener('change', () => { S.city = els.city.value; const c = city(); if (c.lat != null) S.lat = c.lat; onPlace(); });
 els.lat.addEventListener('input', () => { S.lat = +els.lat.value; S.city = 'custom'; els.city.value = 'custom'; onPlace(); });
+$('year').addEventListener('change', e => { S.year = +e.target.value; onTime(); });
 els.day.addEventListener('input', () => { setYearPlay(0); S.N = +els.day.value; onPlace(); });
-function setYearPlay(dir) {
-  S.yearDir = dir;
+function setYearPlay(dir, speed = 24) {
+  S.yearDir = dir; S.yearSpeed = speed;
   if (!dir) S.N = Math.min(365, Math.max(1, Math.round(S.N)));
   $('yearPlay').textContent = dir > 0 ? '❚❚ Пауза' : '▶ Пустить год';
   $('yearBack').textContent = dir < 0 ? '❚❚ Пауза' : '◀ Год назад';
@@ -2417,13 +2528,13 @@ function frame(now) {
     S.T = (((S.T + S.dir * dt * S.speed) % 24) + 24) % 24; onTime();
   }
   if (S.yearDir) {
-    S.N += S.yearDir * dt * 24;                       // about 24 days per second
-    if (S.N > 365.49) S.N -= 365; if (S.N < .51) S.N += 365;
+    S.N += S.yearDir * dt * S.yearSpeed;              // days per second
+    if (S.N > 365.49) { S.N -= 365; S.year++; } if (S.N < .51) { S.N += 365; S.year--; }
+    $('year').value = S.year;
     els.day.value = S.N; els.dayOut.textContent = dateLabel(S.N);
     updateOrbit();
     yearAcc += dt; if (yearAcc > .3) { yearAcc = 0; onPlace(); }
   }
-  if (moonPlaying) { moonDay += dt * 3; if (moonDay >= 29.5) { moonDay = 29.5; moonPlaying = false; $('moonPlay').textContent = '▶ Показать месяц'; } $('moonDay').value = moonDay; drawMoonSection(); }
   if (SH.playing) {
     const r = shRange();
     if (!r) SH.playing = false;
@@ -2446,12 +2557,12 @@ function frame(now) {
 }
 
 function onTheme() {
-  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); drawMoonSection(); drawHilal();
+  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow();
 }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
 new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); drawShadow(); drawMoonSection(); drawHilal(); }, 120); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); drawMoonSection(); drawHilal(); });
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); drawShadow(); }, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); });
 
 /* ================= Fullscreen ================= */
 const studio = document.querySelector('.studio');
@@ -2500,7 +2611,6 @@ document.addEventListener('keydown', e => {
 
 init3D();
 buildSteps();
-drawMoonSection(); drawHilal();
 if (S.lang !== 'ru') setLang(S.lang);
 goStep(0, true);
 requestAnimationFrame(frame);
