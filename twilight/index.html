@@ -2010,7 +2010,7 @@ function drawMoonOrbit(x, w, h, day, L = MOON_TX) {
   x.strokeStyle = 'rgba(230,233,245,.25)'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(mx, my); x.stroke();
   x.fillStyle = '#2a2e3d'; x.beginPath(); x.arc(mx, my, mr, 0, Math.PI * 2); x.fill();
   x.fillStyle = '#f4f1e4'; x.beginPath(); x.arc(mx, my, mr, Math.PI / 2, Math.PI * 1.5); x.fill();
-  x.fillStyle = '#E6E9F5'; x.font = `600 13px ${font}`; x.textAlign = 'center'; x.fillText(L.moon, mx, my - mr - 8);
+  x.fillStyle = '#E6E9F5'; x.font = `600 13px ${font}`; x.textAlign = 'center'; x.fillText(L.moon, cx + Math.cos(a) * (R - mr - 24), cy + Math.sin(a) * (R - mr - 24) + 4);   // inside the orbit, clear of the phase labels
   x.fillStyle = '#9AA2C4'; x.font = `600 14px ${font}`; x.textAlign = 'left'; x.fillText(L.orbitTitle, 12, narrow ? h * .66 : h - 14);
   // how it looks from Earth
   const vx = narrow ? w / 2 : Math.max(cx + R + 140, w * .72), vr = narrow ? Math.min(w * .14, h * .09) : Math.min(h * .25, (w - vx) * .6);
