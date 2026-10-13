@@ -105,161 +105,259 @@
    = 
 50. [caps.year2] В Мекке они почти одинаковые круглый год.
    = 
-51. [summary.0] Земля — шар и вращается: так бывают день и ночь.
+51. [caps.moon1] Луна — спутник Земли. Она облетает Землю примерно за 29,5 дня.
    = 
-52. [summary.1] Ось Земли наклонена: так бывают лето и зима.
+52. [caps.moon2] Луна сама не светится: мы видим её половину, освещённую Солнцем.
    = 
-53. [summary.2] Иша наступает, когда Солнце опустится на 18° под горизонт.
+53. [caps.moon3] В новолуние Луна стоит между Землёй и Солнцем, и её не видно.
    = 
-54. [summary.3] Летом в Хасавюрте Солнце опускается медленно — поэтому иша позже.
+54. [caps.moon4] Через 1–2 дня вечером на западе появляется тонкий месяц. С него начинается лунный месяц.
    = 
-55. [summary.4] Чем севернее, тем дольше сумерки. На юге они короткие круглый год.
+55. [caps.hil1] Пример: начало Рамадана 1448 года. Новолуние — 6 февраля 2027 года.
    = 
-56. [chapters.earth] Земля
+56. [caps.hil2] 6 февраля месяц не виден нигде.
    = 
-57. [chapters.spin] День и ночь
+57. [caps.hil3] 7 февраля: в Америке его видно глазом, у нас — с трудом, на востоке — только в телескоп.
    = 
-58. [chapters.orbit] Год
+58. [caps.hil4] 8 февраля его видно почти везде.
    = 
-59. [chapters.tilt] Лето и зима
+59. [caps.msky] В один и тот же вечер месяц стоит на разной высоте и наклонён по‑разному.
    = 
-60. [chapters.twilight] Сумерки
+60. [summary.0] Земля — шар и вращается: так бывают день и ночь.
    = 
-61. [chapters.degrees] Что такое градус
+61. [summary.1] Ось Земли наклонена: так бывают лето и зима.
    = 
-62. [chapters.why18] Почему 18°
+62. [summary.2] Иша наступает, когда Солнце опустится на 18° под горизонт.
    = 
-63. [chapters.sky] Небо над Хасавюртом
+63. [summary.3] Летом в Хасавюрте Солнце опускается медленно — поэтому иша позже.
    = 
-64. [chapters.autumn] Осень
+64. [summary.4] Чем севернее, тем дольше сумерки. На юге они короткие круглый год.
    = 
-65. [chapters.summer] Лето
+65. [calendar.title] Почему начало месяца в разных странах отличается
    = 
-66. [chapters.why] Почему так
+66. [calendar.list.0] Молодой месяц раньше становится виден на западе.
    = 
-67. [chapters.night] Короткая ночь
+67. [calendar.list.1] Мешают облака, дымка и засветка.
    = 
-68. [chapters.south] Юг
+68. [calendar.list.2] Страны пользуются разными правилами: своё наблюдение, наблюдение в любой стране или расчёт.
    = 
-69. [chapters.north] Север
+69. [calendar.list.3] Поэтому начало месяца может различаться на день.
    = 
-70. [chapters.latitude] Чем севернее
+70. [chapters.earth] Земля
    = 
-71. [chapters.year] Весь год
+71. [chapters.spin] День и ночь
    = 
-72. [chapters.summary] Итог
+72. [chapters.orbit] Год
    = 
-73. [chart.latTitle] Сколько длятся сумерки после заката
+73. [chapters.tilt] Лето и зима
    = 
-74. [chart.latAxis] Широта (насколько город севернее экватора)
+74. [chapters.twilight] Сумерки
    = 
-75. [chart.jun] 21 июня
+75. [chapters.degrees] Что такое градус
    = 
-76. [chart.sep] 23 сентября
+76. [chapters.why18] Почему 18°
    = 
-77. [chart.never] не кончаются
+77. [chapters.sky] Небо над Хасавюртом
    = 
-78. [chart.hours] ч
+78. [chapters.autumn] Осень
    = 
-79. [chart.min] мин
+79. [chapters.summer] Лето
    = 
-80. [chart.yearTitle] Сумерки после заката в течение года
+80. [chapters.why] Почему так
    = 
-81. [chart.months.0] янв
+81. [chapters.night] Короткая ночь
    = 
-82. [chart.months.1] фев
+82. [chapters.south] Юг
    = 
-83. [chart.months.2] мар
+83. [chapters.north] Север
    = 
-84. [chart.months.3] апр
+84. [chapters.latitude] Чем севернее
    = 
-85. [chart.months.4] май
+85. [chapters.year] Весь год
    = 
-86. [chart.months.5] июн
+86. [chapters.moon] Луна
    = 
-87. [chart.months.6] июл
+87. [chapters.hilal] Молодой месяц
    = 
-88. [chart.months.7] авг
+88. [chapters.moonsky] Месяц в разных местах
    = 
-89. [chart.months.8] сен
+89. [chapters.calendar] Лунный календарь
    = 
-90. [chart.months.9] окт
+90. [chapters.summary] Итог
    = 
-91. [chart.months.10] ноя
+91. [chart.latTitle] Сколько длятся сумерки после заката
    = 
-92. [chart.months.11] дек
+92. [chart.latAxis] Широта (насколько город севернее экватора)
    = 
-93. [chart.cities.makkah] Мекка
+93. [chart.jun] 21 июня
    = 
-94. [chart.cities.khasavyurt] Хасавюрт
+94. [chart.sep] 23 сентября
    = 
-95. [chart.cities.moscow] Москва
+95. [chart.never] не кончаются
    = 
-96. [chart.cities.kazan] Казань
+96. [chart.hours] ч
    = 
-97. [chart.cities.equator] Экватор
+97. [chart.min] мин
    = 
-98. [chart.deg360] полный круг = 360°
+98. [chart.yearTitle] Сумерки после заката в течение года
    = 
-99. [chart.deg90] 90° — над головой
+99. [chart.months.0] янв
    = 
-100. [chart.horizon] горизонт
+100. [chart.months.1] фев
    = 
-101. [chart.fist] кулак на вытянутой руке ≈ 10°
+101. [chart.months.2] мар
    = 
-102. [chart.sunlight] лучи Солнца
+102. [chart.months.3] апр
    = 
-103. [chart.shadow] тень Земли
+103. [chart.months.4] май
    = 
-104. [chart.air80] ≈ 80 км
+104. [chart.months.5] июн
    = 
-105. [chart.you] Хасавюрт
+105. [chart.months.6] июл
    = 
-106. [chart.depth] Солнце под горизонтом
+106. [chart.months.7] авг
    = 
-107. [chart.earth] Земля
+107. [chart.months.8] сен
    = 
-108. [chart.air] воздух
+108. [chart.months.9] окт
    = 
-109. [chart.nightTitle] Сутки в Хасавюрте: от полудня до полудня
+109. [chart.months.10] ноя
    = 
-110. [chart.day] день
+110. [chart.months.11] дек
    = 
-111. [chart.twilight] сумерки
+111. [chart.cities.makkah] Мекка
    = 
-112. [chart.night] тёмная ночь
+112. [chart.cities.khasavyurt] Хасавюрт
    = 
-113. [chart.sunset] закат
+113. [chart.cities.moscow] Москва
    = 
-114. [chart.sunrise] восход
+114. [chart.cities.kazan] Казань
    = 
-115. [chart.ishaName] иша
+115. [chart.cities.equator] Экватор
    = 
-116. [chart.fajrName] фаджр
+116. [chart.deg360] полный круг = 360°
    = 
-117. [chart.sepRow] 23 сентября
+117. [chart.deg90] 90° — над головой
    = 
-118. [chart.junRow] 21 июня
+118. [chart.horizon] горизонт
    = 
-119. [labels.С] С
+119. [chart.fist] кулак на вытянутой руке ≈ 10°
    = 
-120. [labels.В] В
+120. [chart.sunlight] лучи Солнца
    = 
-121. [labels.Ю] Ю
+121. [chart.shadow] тень Земли
    = 
-122. [labels.З] З
+122. [chart.air80] ≈ 80 км
    = 
-123. [labels.горизонт] горизонт
+123. [chart.you] Хасавюрт
    = 
-124. [labels.Северный полюс] Северный полюс
+124. [chart.depth] Солнце под горизонтом
    = 
-125. [labels.−18°: граница сумерек] −18°: граница сумерек
+125. [chart.earth] Земля
    = 
-126. [labels.21 марта] 21 марта
+126. [chart.air] воздух
    = 
-127. [labels.21 июня] 21 июня
+127. [chart.nightTitle] Сутки в Хасавюрте: от полудня до полудня
    = 
-128. [labels.23 сентября] 23 сентября
+128. [chart.day] день
    = 
-129. [labels.21 декабря] 21 декабря
+129. [chart.twilight] сумерки
+   = 
+130. [chart.night] тёмная ночь
+   = 
+131. [chart.sunset] закат
+   = 
+132. [chart.sunrise] восход
+   = 
+133. [chart.ishaName] иша
+   = 
+134. [chart.fajrName] фаджр
+   = 
+135. [chart.sepRow] 23 сентября
+   = 
+136. [chart.junRow] 21 июня
+   = 
+137. [moon.orbitTitle] Луна вокруг Земли (вид сверху)
+   = 
+138. [moon.view] Так Луну видно с Земли
+   = 
+139. [moon.day] день
+   = 
+140. [moon.sunlight] свет Солнца
+   = 
+141. [moon.earth] Земля
+   = 
+142. [moon.moon] Луна
+   = 
+143. [moon.phases.0] новолуние
+   = 
+144. [moon.phases.1] молодой месяц
+   = 
+145. [moon.phases.2] первая четверть
+   = 
+146. [moon.phases.3] растущая Луна
+   = 
+147. [moon.phases.4] полнолуние
+   = 
+148. [moon.phases.5] убывающая Луна
+   = 
+149. [moon.phases.6] последняя четверть
+   = 
+150. [moon.phases.7] старый месяц
+   = 
+151. [moon.mapTitle] Где виден молодой месяц вечером
+   = 
+152. [moon.zones.0] видно глазом
+   = 
+153. [moon.zones.1] с трудом, лучше в бинокль
+   = 
+154. [moon.zones.2] только в телескоп
+   = 
+155. [moon.zones.3] не видно
+   = 
+156. [moon.evenings.0] 6 февраля 2027
+   = 
+157. [moon.evenings.1] 7 февраля 2027
+   = 
+158. [moon.evenings.2] 8 февраля 2027
+   = 
+159. [moon.cities.makkah] Мекка
+   = 
+160. [moon.cities.khasavyurt] Хасавюрт
+   = 
+161. [moon.cities.moscow] Москва
+   = 
+162. [moon.cities.rabat] Рабат
+   = 
+163. [moon.cities.newyork] Нью-Йорк
+   = 
+164. [moon.cities.jakarta] Джакарта
+   = 
+165. [moon.height] высота
+   = 
+166. [moon.below] месяц ещё не родился или уже зашёл
+   = 
+167. [moon.west] запад
+   = 
+168. [labels.С] С
+   = 
+169. [labels.В] В
+   = 
+170. [labels.Ю] Ю
+   = 
+171. [labels.З] З
+   = 
+172. [labels.горизонт] горизонт
+   = 
+173. [labels.Северный полюс] Северный полюс
+   = 
+174. [labels.−18°: граница сумерек] −18°: граница сумерек
+   = 
+175. [labels.21 марта] 21 марта
+   = 
+176. [labels.21 июня] 21 июня
+   = 
+177. [labels.23 сентября] 23 сентября
+   = 
+178. [labels.21 декабря] 21 декабря
    = 

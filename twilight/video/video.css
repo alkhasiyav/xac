@@ -21,10 +21,10 @@ html, body { margin: 0 !important; background: #060914 !important; overflow: hid
 #v-title .t2 { font: 400 36px/1.35 "Golos Text", sans-serif; color: #c9cfe8; max-width: 1300px; text-wrap: balance; }
 #v2d { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding-bottom: 120px;
   background: #0B0E1B; z-index: 10; }
-#v-sum { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: center; padding: 0 220px;
+#v-sum, #v-card { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: center; padding: 0 220px;
   background: linear-gradient(90deg, rgba(6,9,20,.92), rgba(6,9,20,.6)); opacity: 0; }
-#v-sum .h { font: 600 64px/1.1 "Unbounded", sans-serif; color: #fff; margin-bottom: 40px; }
-#v-sum ol { margin: 0; padding-left: 50px; display: grid; gap: 26px; }
-#v-sum li { font: 500 38px/1.3 "Golos Text", sans-serif; color: #E6E9F5; }
-#v-sum li::marker { color: #F2994A; font-weight: 600; }
+#v-sum .h, #v-card .h { font: 600 64px/1.1 "Unbounded", sans-serif; color: #fff; margin-bottom: 40px; }
+#v-sum ol, #v-card ol { margin: 0; padding-left: 50px; display: grid; gap: 26px; }
+#v-sum li, #v-card li { font: 500 38px/1.3 "Golos Text", sans-serif; color: #E6E9F5; }
+#v-sum li::marker, #v-card li::marker { color: #F2994A; font-weight: 600; }
 .v-nodate .hud .clock small, .v-nodate .phase { display: none !important; }

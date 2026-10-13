@@ -16,10 +16,13 @@
 
   // ---------- overlay elements ----------
   const el = (tag, id, parent = document.body) => { const e = document.createElement(tag); e.id = id; parent.appendChild(e); return e; };
-  const cap = el('div', 'v-cap'), chap = el('div', 'v-chap'), title = el('div', 'v-title'), v2d = el('div', 'v2d'), summ = el('div', 'v-sum');
+  const cap = el('div', 'v-cap'), chap = el('div', 'v-chap'), title = el('div', 'v-title'), v2d = el('div', 'v2d'), summ = el('div', 'v-sum'), card = el('div', 'v-card');
   title.innerHTML = '<div class="t1"></div><div class="t2"></div>';
   summ.innerHTML = '<div class="h"></div><ol>' + TX.summary.map(s => `<li>${s}</li>`).join('') + '</ol>';
   summ.querySelector('.h').textContent = TX.chapters.summary;
+  card.innerHTML = '<div class="h"></div><ol>' + TX.calendar.list.map(s => `<li>${s}</li>`).join('') + '</ol>';
+  card.querySelector('.h').textContent = TX.calendar.title;
+  const ML = Object.assign({}, A.MOON_TX, TX.moon || {});   // labels inside the Moon drawings
   const chart = document.createElement('canvas'); v2d.appendChild(chart);
 
   // translate the fixed 3D labels; hide the ones without a translation
@@ -68,6 +71,11 @@
   const evening = (f, p, extra) => (f.ss - .25) + p * ((isNaN(f.isha) ? f.ss + extra : f.isha + .35) - (f.ss - .25));
 
   // ---------- 2D charts drawn here, so every word comes from the caption file ----------
+  function moonCanvas(cssW, cssH, k) {   // draw at a logical size, enlarged k times
+    chart.style.width = cssW + 'px'; chart.style.height = cssH + 'px'; chart.width = cssW * 2; chart.height = cssH * 2;
+    const x = chart.getContext('2d'); x.setTransform(2 * k, 0, 0, 2 * k, 0, 0); x.clearRect(0, 0, cssW / k, cssH / k);
+    return { x, w: cssW / k, h: cssH / k };
+  }
   function chartCanvas() {
     const w = 1500, h = 720; chart.style.width = w + 'px'; chart.style.height = h + 'px'; chart.width = w * 2; chart.height = h * 2;
     const x = chart.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, w, h);
@@ -312,6 +320,18 @@
       run(t, p) { drawLatChart(clamp(t / 6)); } },
     { dur: 14, chapter: 'year', two: true, caps: [[.5, 7.5, 'year1'], [7.5, 13.7, 'year2']],
       run(t, p) { drawYearChart(clamp(t / 6)); } },
+    { dur: 20, chapter: 'moon', two: true, caps: [[.3, 5, 'moon1'], [5, 10, 'moon2'], [10, 14.5, 'moon3'], [14.5, 19.7, 'moon4']],
+      run(t, p) { const { x, w, h } = moonCanvas(1560, 750, 1.6);
+        const day = t < 10 ? lerp(8, 29.53 + 1.5, t / 10) % 29.53 : t < 14.5 ? 0 : lerp(0, 2, clamp((t - 14.5) / 3));
+        A.drawMoonOrbit(x, w, h, day, ML); } },
+    { dur: 26, chapter: 'hilal', two: true, caps: [[.3, 5.5, 'hil1'], [5.5, 9.5, 'hil2'], [9.5, 19, 'hil3'], [19, 25.7, 'hil4']],
+      run(t, p) { const ev = t < 9.5 ? 0 : t < 19 ? 1 : 2, k = 1.6, cw = 1560, lw = cw / k, lh = lw * 128 / 360 + 34;
+        const { x, w, h } = moonCanvas(cw, lh * k, k); A.drawHilalMap(x, w, h, ev, ML); } },
+    { dur: 13, chapter: 'moonsky', two: true, caps: [[.3, 12.7, 'msky']],
+      run(t, p) { const { x, w, h } = moonCanvas(1560, 470, 1.6); A.drawHilalSky(x, w, h, 1, ML); } },
+    { dur: 16, chapter: 'calendar', card: true,
+      run(t, p) { S.view = 'orbit'; bands(0); A.orbit.ringHolder.visible = false; setPlace('khasavyurt', 172); S.T = 12; A.orbitOnly();
+        const a = 1.2 + p * .3; A.cam('free', [86 * Math.sin(a), 30, 86 * Math.cos(a)], [0, 0, 0], 45); } },
     { dur: 18, summary: true,
       run(t, p) { S.view = 'orbit'; bands(0); A.orbit.ringHolder.visible = false; setPlace('khasavyurt', 172); S.T = 12; A.orbitOnly();
         const a = 1.4 + p * .4; A.cam('free', [86 * Math.sin(a), 30, 86 * Math.cos(a)], [0, 0, 0], 45); } }
@@ -333,7 +353,9 @@
     title.style.opacity = s.title ? fade(lt, 0, s.dur, .9) : 0;
     if (s.title) { title.querySelector('.t1').textContent = s.title[0]; title.querySelector('.t2').textContent = s.title[1]; }
     summ.style.opacity = s.summary ? fade(lt, 0, s.dur + 5, .9) : 0;
+    card.style.opacity = s.card ? fade(lt, 0, s.dur, .7) : 0;
+    card.querySelectorAll('li').forEach((li, i) => { li.style.opacity = s.card ? clamp((lt - .8 - i * 2.6) / .6) : 0; });
     summ.querySelectorAll('li').forEach((li, i) => { li.style.opacity = s.summary ? clamp((lt - .8 - i * 2.2) / .6) : 0; });
-    document.querySelector('.hud').style.opacity = (s.title || s.two || s.summary || S.view === 'orbit' || S.view === 'earth') ? 0 : 1;
+    document.querySelector('.hud').style.opacity = (s.title || s.two || s.summary || s.card || S.view === 'orbit' || S.view === 'earth') ? 0 : 1;
   };
 })();

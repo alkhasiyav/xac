@@ -850,6 +850,45 @@
     </div>
   </section>
 
+  <section class="sect" id="moonsec">
+    <div class="sect-head">
+      <div class="eyebrow">Луна и лунный календарь</div>
+      <h2>Почему месяц видят в разных местах по‑разному</h2>
+      <div class="prose">
+        <p>Луна — спутник Земли. Она облетает Землю примерно за 29,5 дня и сама не светится: мы видим ту её половину, которую освещает Солнце. В новолуние Луна стоит между Землёй и Солнцем и повёрнута к нам тёмной стороной. Через день‑два вечером на западе появляется тонкий молодой месяц. С него начинается лунный месяц.</p>
+        <p>Молодой месяц очень тонкий и висит низко, в светлом после заката небе. Чтобы его увидеть, Луна должна отойти от Солнца достаточно далеко и подняться достаточно высоко. Поэтому в один и тот же вечер месяц где‑то уже хорошо виден, а где‑то ещё нет.</p>
+      </div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Луна вокруг Земли и её фазы</div>
+      <canvas class="chart" id="moonOrbit" height="380" aria-label="Схема: Луна вокруг Земли и фазы Луны"></canvas>
+      <div class="sh-controls">
+        <div class="field">
+          <div class="field-head"><label for="moonDay">День лунного месяца</label><output id="moonDayOut">2</output></div>
+          <input type="range" id="moonDay" min="0" max="29.5" step="0.1" value="2">
+        </div>
+        <div class="row"><button type="button" class="btn primary" id="moonPlay">▶ Показать месяц</button></div>
+      </div>
+    </div>
+    <div class="fig">
+      <div class="fig-title" id="hilalTitle">Где виден молодой месяц</div>
+      <div class="row" role="group" aria-label="Вечер">
+        <button type="button" class="btn small" data-ev="0">6 февраля 2027</button>
+        <button type="button" class="btn small primary" data-ev="1">7 февраля 2027</button>
+        <button type="button" class="btn small" data-ev="2">8 февраля 2027</button>
+      </div>
+      <canvas class="chart" id="hilalMap" height="420" aria-label="Карта видимости молодого месяца"></canvas>
+      <canvas class="chart" id="hilalSky" height="250" aria-label="Месяц после заката в Мекке, Хасавюрте и Москве"></canvas>
+      <figcaption>Пример: начало Рамадана 1448 года. Новолуние 6 февраля 2027 года в 15:56 по Гринвичу. Зоны рассчитаны по критерию Одеха для момента вскоре после заката в каждом месте; расчёт приблизительный. Ниже — западная часть неба после заката в трёх городах: месяц стоит на разной высоте и наклонён по‑разному.</figcaption>
+    </div>
+    <div class="prose">
+      <h3>Почему лунный календарь в разных странах может отличаться</h3>
+      <p><b>Месяц раньше становится виден на западе.</b> Солнце заходит в Америке на несколько часов позже, чем у нас, и за это время Луна успевает отойти от Солнца дальше. Поэтому в первый вечер месяц часто видят в Америке или Африке, а на Кавказе и в Азии — только на следующий день.</p>
+      <p><b>Мешают облака, дымка и засветка.</b> Тонкий месяц у горизонта легко потерять даже там, где по расчёту его можно увидеть.</p>
+      <p><b>Разные правила.</b> В одних странах ждут, пока месяц увидят у себя. В других принимают сообщение о наблюдении из любой страны. В третьих начинают месяц по астрономическому расчёту. Поэтому начало месяца, в том числе Рамадана и праздников, может различаться на день.</p>
+    </div>
+  </section>
+
   <section class="sect" id="highlat">
     <div class="sect-head">
       <div class="eyebrow">Высокие широты</div>
@@ -3051,6 +3090,193 @@ function updateLp() {
   $('verdict').innerHTML = cells.map(([k, v, warn]) => `<div><span class="k">${k}</span><span class="v${warn ? ' warn' : ''}">${v}</span></div>`).join('');
 }
 
+/* ================= Moon: phases and first-crescent visibility ================= */
+const MOON_TX = {
+  orbitTitle: 'Луна вокруг Земли (вид сверху)', view: 'Так Луну видно с Земли', day: 'день', sunlight: 'свет Солнца', earth: 'Земля', moon: 'Луна',
+  phases: ['новолуние', 'молодой месяц', 'первая четверть', 'растущая Луна', 'полнолуние', 'убывающая Луна', 'последняя четверть', 'старый месяц'],
+  mapTitle: 'Где виден молодой месяц вечером', zones: ['видно глазом', 'с трудом, лучше в бинокль', 'только в телескоп', 'не видно'],
+  evenings: ['6 февраля 2027', '7 февраля 2027', '8 февраля 2027'],
+  cities: { makkah: 'Мекка', khasavyurt: 'Хасавюрт', moscow: 'Москва', rabat: 'Рабат', newyork: 'Нью-Йорк', jakarta: 'Джакарта' },
+  height: 'высота', below: 'месяц ещё не родился или уже зашёл', west: 'запад'
+};
+const Moon = (() => {
+  const nrm = a => ((a % 360) + 360) % 360;
+  const jdOf = (y, m, d, h = 0) => { if (m <= 2) { y--; m += 12; } const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4); return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5 + h / 24; };
+  function sunMoon(jd) {   // low-precision Sun and Moon (Meeus, main terms; ≈0.1–0.3°)
+    const T = (jd - 2451545) / 36525, s = v => sin(v * D2R), c = v => cos(v * D2R);
+    const Lp = 218.3164477 + 481267.88123421 * T, D = 297.8501921 + 445267.1114034 * T, M = 357.5291092 + 35999.0502909 * T, Mp = 134.9633964 + 477198.8675055 * T, F = 93.272095 + 483202.0175233 * T;
+    const mlon = Lp + 6.289 * s(Mp) + 1.274 * s(2 * D - Mp) + .658 * s(2 * D) + .214 * s(2 * Mp) - .186 * s(M) - .114 * s(2 * F) + .059 * s(2 * D - 2 * Mp) + .057 * s(2 * D - M - Mp) + .053 * s(2 * D + Mp) + .046 * s(2 * D - M) - .041 * s(M - Mp) - .035 * s(D) - .03 * s(M + Mp);
+    const mlat = 5.128 * s(F) + .281 * s(Mp + F) + .278 * s(Mp - F) + .173 * s(2 * D - F) + .055 * s(2 * D - Mp + F) + .046 * s(2 * D - Mp - F) + .033 * s(2 * D + F) + .017 * s(2 * Mp + F);
+    const dist = 385001 - 20905 * c(Mp) - 3699 * c(2 * D - Mp) - 2956 * c(2 * D) - 570 * c(2 * Mp) + 246 * c(2 * Mp - 2 * D) - 205 * c(M - 2 * D) - 171 * c(Mp + 2 * D);
+    const slon = 280.46646 + 36000.76983 * T + (1.914602 - .004817 * T) * s(M) + .019993 * s(2 * M), eps = (23.439291 - .0130042 * T) * D2R;
+    const eq = (lam, bet) => { const l = lam * D2R, b = bet * D2R; return { ra: nrm(Math.atan2(sin(l) * cos(eps) - Math.tan(b) * sin(eps), cos(l)) * R2D), dec: Math.asin(sin(b) * cos(eps) + cos(b) * sin(eps) * sin(l)) * R2D }; };
+    return { moon: { ...eq(mlon, mlat), dist }, sun: eq(slon, 0), gmst: nrm(280.46061837 + 360.98564736629 * (jd - 2451545)) };
+  }
+  function altaz(o, gmst, lat, lon) {
+    const H = (gmst + lon - o.ra) * D2R, f = lat * D2R, d = o.dec * D2R;
+    return { alt: Math.asin(sin(f) * sin(d) + cos(f) * cos(d) * cos(H)) * R2D, az: nrm(Math.atan2(-sin(H), Math.tan(d) * cos(f) - sin(f) * cos(H)) * R2D) };
+  }
+  const sep = (a1, z1, a2, z2) => Math.acos(Math.max(-1, Math.min(1, sin(a1 * D2R) * sin(a2 * D2R) + cos(a1 * D2R) * cos(a2 * D2R) * cos((z1 - z2) * D2R)))) * R2D;
+  const CONJ = jdOf(2027, 2, 6, 15.93), EVENINGS = [[2027, 2, 6], [2027, 2, 7], [2027, 2, 8]];
+  // the sky shortly after local sunset (Sun 4° down, close to Odeh's best time) and Odeh's visibility value V
+  function evening(ev, lat, lon) {
+    const [y, m, d] = EVENINGS[ev], noon = jdOf(y, m, d) + .5 - lon / 360, g0 = sunMoon(noon).gmst;
+    let jd = noon;
+    for (let k = 0; k < 3; k++) {
+      const r = sunMoon(jd), f = lat * D2R, dl = r.sun.dec * D2R, cH = (sin(-4 * D2R) - sin(f) * sin(dl)) / (cos(f) * cos(dl));
+      if (cH < -1 || cH > 1) return null;
+      jd = noon + nrm(r.sun.ra - lon + Math.acos(cH) * R2D - g0) / 360.98564736629;
+    }
+    const r = sunMoon(jd), sn = altaz(r.sun, r.gmst, lat, lon), mo = altaz(r.moon, r.gmst, lat, lon);
+    const hp = Math.asin(6378.14 / r.moon.dist) * R2D, malt = mo.alt - hp * cos(mo.alt * D2R);
+    const arcl = sep(malt, mo.az, sn.alt, sn.az), SD = 15.54 * 384400 / r.moon.dist, W = SD * (1 - cos(arcl * D2R));
+    const V = jd < CONJ || malt < .5 ? -99 : (malt - sn.alt) - (-0.1018 * W ** 3 + 0.7319 * W ** 2 - 6.3226 * W + 7.1651);
+    return { V, sun: sn, moon: { alt: malt, az: mo.az }, arcl, jd };
+  }
+  const zone = V => V >= 5.65 ? 0 : V >= 2 ? 1 : V >= -0.96 ? 2 : 3;
+  const grids = {};
+  function grid(ev) {
+    if (grids[ev]) return grids[ev];
+    const g = [];
+    for (let lat = 68.5; lat >= -57.5; lat -= 1) for (let lon = -179.5; lon <= 179.5; lon += 1) { const e = evening(ev, lat, lon); g.push([lat, lon, e ? zone(e.V) : 3]); }
+    return (grids[ev] = g);
+  }
+  return { evening, grid, zone };
+})();
+const MOON_PLACES = [['newyork', 40.7, -74], ['rabat', 34.0, -6.8], ['makkah', 21.42, 39.83], ['khasavyurt', 43.25, 46.59], ['moscow', 55.76, 37.62], ['jakarta', -6.2, 106.8]];
+const ZONE_COL = ['#4cd07d', '#f2c443', '#f08a4b', 'rgba(0,0,0,0)'];
+const zoneImgs = {};
+function zoneImage(ev) {   // one pixel per 1° cell, drawn enlarged with smoothing
+  if (zoneImgs[ev]) return zoneImgs[ev];
+  const c = document.createElement('canvas'); c.width = 360; c.height = 127; const x = c.getContext('2d'), d = x.createImageData(360, 127);
+  const rgb = ['#4cd07d', '#f2c443', '#f08a4b'].map(h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)));
+  Moon.grid(ev).forEach(([lat, lon, z], i) => { const col = rgb[z]; if (!col) return; d.data.set([...col, 255], i * 4); });
+  x.putImageData(d, 0, 0); return (zoneImgs[ev] = c);
+}
+
+function moonPhaseDisc(x, cx, cy, r, frac, litRight, earthshine) {   // the Moon as seen from Earth, frac = lit fraction
+  x.fillStyle = earthshine || '#2a2e3d'; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
+  x.save(); x.translate(cx, cy); if (!litRight) x.scale(-1, 1);
+  const k = 1 - 2 * frac;
+  x.fillStyle = '#f4f1e4'; x.beginPath(); x.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+  x.ellipse(0, 0, Math.abs(k) * r, r, 0, Math.PI / 2, -Math.PI / 2, k > 0); x.fill(); x.restore();
+}
+function drawMoonOrbit(x, w, h, day, L = MOON_TX) {
+  const P = 29.53;
+  x.fillStyle = '#070a16'; x.beginPath(); x.roundRect(0, 0, w, h, 14); x.fill();
+  const narrow = w < 640, font = '"Golos Text", system-ui, sans-serif';
+  const cx = narrow ? w / 2 : Math.min(w * .36, h * .62), cy = narrow ? h * .34 : h / 2, R = narrow ? Math.min(w * .3, h * .22) : Math.min(h * .34, cx * .6);
+  // sunlight from the left
+  x.strokeStyle = 'rgba(255,214,120,.5)'; x.fillStyle = 'rgba(255,214,120,.7)'; x.lineWidth = 1.5;
+  for (let k = -2; k <= 2; k++) { const y = cy + k * R * .45; x.beginPath(); x.moveTo(10, y); x.lineTo(46, y); x.stroke(); x.beginPath(); x.moveTo(54, y); x.lineTo(44, y - 5); x.lineTo(44, y + 5); x.fill(); }
+  x.fillStyle = '#FFD3AA'; x.font = `13px ${font}`; x.textAlign = 'left'; x.fillText(L.sunlight, 10, cy - R * .9 - 14);
+  // orbit, Earth
+  x.strokeStyle = 'rgba(160,172,220,.35)'; x.setLineDash([5, 6]); x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.stroke(); x.setLineDash([]);
+  const er = Math.max(14, R * .2);
+  x.fillStyle = '#123'; x.beginPath(); x.arc(cx, cy, er, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#3f7fc4'; x.beginPath(); x.arc(cx, cy, er, Math.PI / 2, Math.PI * 1.5); x.fill();
+  x.fillStyle = '#E6E9F5'; x.font = `600 13px ${font}`; x.textAlign = 'center'; x.fillText(L.earth, cx, cy + er + 18);
+  // key positions
+  x.font = `12px ${font}`; x.fillStyle = '#9AA2C4';
+  x.textAlign = 'center';
+  [[cx - R, cy + 30, 0], [cx, cy + R + 22, 2], [cx + R, cy + 30, 4], [cx, cy - R - 12, 6]].forEach(([tx, ty, i]) => x.fillText(L.phases[i], tx, ty));
+  // the Moon on its orbit, lit from the left
+  const a = Math.PI - 2 * Math.PI * day / P, mx = cx + Math.cos(a) * R, my = cy + Math.sin(a) * R, mr = Math.max(9, R * .1);
+  x.strokeStyle = 'rgba(230,233,245,.25)'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(mx, my); x.stroke();
+  x.fillStyle = '#2a2e3d'; x.beginPath(); x.arc(mx, my, mr, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#f4f1e4'; x.beginPath(); x.arc(mx, my, mr, Math.PI / 2, Math.PI * 1.5); x.fill();
+  x.fillStyle = '#E6E9F5'; x.font = `600 13px ${font}`; x.textAlign = 'center'; x.fillText(L.moon, mx, my - mr - 8);
+  x.fillStyle = '#9AA2C4'; x.font = `600 14px ${font}`; x.textAlign = 'left'; x.fillText(L.orbitTitle, 12, narrow ? h * .66 : h - 14);
+  // how it looks from Earth
+  const vx = narrow ? w / 2 : Math.max(cx + R + 140, w * .72), vr = narrow ? Math.min(w * .14, h * .09) : Math.min(h * .25, (w - vx) * .6);
+  const vy = narrow ? h * .82 : cy;
+  const frac = (1 - Math.cos(2 * Math.PI * day / P)) / 2;
+  moonPhaseDisc(x, vx, vy, vr, frac, day < P / 2);
+  x.fillStyle = '#E6E9F5'; x.font = `600 14px ${font}`; x.textAlign = 'center'; x.fillText(L.view, vx, vy - vr - 18);
+  const ph = Math.round(day / P * 8) % 8;
+  x.font = `600 16px ${font}`; x.fillStyle = '#FFD3AA'; x.fillText(L.phases[ph], vx, vy + vr + 26);
+  x.font = `13px ${font}`; x.fillStyle = '#9AA2C4'; x.fillText(L.day + ' ' + day.toFixed(1).replace('.', ','), vx, vy + vr + 46);
+}
+const landImg = (() => { const im = new Image(); if (window.LAND_PNG) im.src = window.LAND_PNG; return im; })();
+let landColored = null;
+function coloredLand() {
+  if (landColored || !landImg.complete || !landImg.naturalWidth) return landColored;
+  const c = document.createElement('canvas'); c.width = landImg.naturalWidth; c.height = landImg.naturalHeight;
+  const x = c.getContext('2d'); x.drawImage(landImg, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  for (let i = 0; i < p.length; i += 4) { const k = p[i] / 255; p[i] = 14 + 30 * k; p[i + 1] = 23 + 44 * k; p[i + 2] = 48 - 8 * k; p[i + 3] = 255; }
+  x.putImageData(d, 0, 0); return (landColored = c);
+}
+function drawHilalMap(x, w, h, ev, L = MOON_TX) {
+  const font = '"Golos Text", system-ui, sans-serif', top = 70, bot = -58, legendH = w < 640 ? 78 : 34;
+  const mh = h - legendH, X = lon => (lon + 180) / 360 * w, Y = lat => (top - lat) / (top - bot) * mh;
+  x.save(); x.beginPath(); x.roundRect(0, 0, w, h, 14); x.clip();
+  x.fillStyle = '#0e1730'; x.fillRect(0, 0, w, h);
+  const land = coloredLand();
+  if (land) { const sy = (90 - top) / 180 * land.height, sh = (top - bot) / 180 * land.height; x.drawImage(land, 0, sy, land.width, sh, 0, 0, w, mh); }
+  else if (landImg && !landImg._hooked) { landImg._hooked = true; landImg.addEventListener('load', () => drawHilal()); }
+  x.globalAlpha = .6; x.imageSmoothingEnabled = true; x.drawImage(zoneImage(ev), X(-180), Y(69), X(180) - X(-180), Y(-58) - Y(69)); x.globalAlpha = 1;
+  x.font = `600 13px ${font}`;
+  for (const [id, la, lo] of MOON_PLACES) {
+    const px = X(lo), py = Y(la);
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(px, py, 4, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.7)'; x.lineWidth = 3; x.textAlign = id === 'khasavyurt' || id === 'jakarta' ? 'left' : 'right';
+    const tx = px + (x.textAlign === 'left' ? 8 : -8), ty = py + (id === 'moscow' ? -6 : id === 'khasavyurt' ? 4 : 4);
+    x.strokeText(L.cities[id], tx, ty); x.fillStyle = '#fff'; x.fillText(L.cities[id], tx, ty);
+  }
+  x.fillStyle = 'rgba(7,10,22,.85)'; x.fillRect(0, mh, w, h - mh);
+  x.font = `13px ${font}`; x.textAlign = 'left'; let lx = 12, ly = mh + 11;
+  for (let z = 0; z < 4; z++) {
+    const tw = x.measureText(L.zones[z]).width + 44; if (lx + tw > w && lx > 12) { lx = 12; ly += 22; }
+    x.fillStyle = z === 3 ? '#0e1730' : ZONE_COL[z]; x.fillRect(lx, ly, 14, 14); x.strokeStyle = 'rgba(230,233,245,.5)'; x.lineWidth = 1; x.strokeRect(lx, ly, 14, 14);
+    x.fillStyle = '#E6E9F5'; x.fillText(L.zones[z], lx + 20, ly + 12); lx += tw;
+  }
+  x.fillStyle = '#fff'; x.font = `600 ${w < 640 ? 13 : 15}px ${font}`; x.textAlign = 'left'; x.strokeStyle = 'rgba(0,0,0,.6)'; x.lineWidth = 3;
+  const t = (w < 640 ? '' : L.mapTitle + ': ') + L.evenings[ev]; x.strokeText(t, 12, 22); x.fillText(t, 12, 22);
+  x.restore();
+}
+function drawHilalSky(x, w, h, ev, L = MOON_TX) {
+  const font = '"Golos Text", system-ui, sans-serif', ids = ['makkah', 'khasavyurt', 'moscow'], gap = 12, narrow = w < 640;
+  const pw = narrow ? w : (w - gap * 2) / 3, ph = narrow ? (h - gap * 2) / 3 : h;
+  ids.forEach((id, i) => {
+    const pl = MOON_PLACES.find(p => p[0] === id), e = Moon.evening(ev, pl[1], pl[2]), x0 = narrow ? 0 : i * (pw + gap), y0 = narrow ? i * (ph + gap) : 0;
+    x.save(); x.translate(0, y0); const h = ph; x.beginPath(); x.roundRect(x0, 0, pw, h, 12); x.clip();
+    const hy = h - 36, g = x.createLinearGradient(0, 0, 0, hy); g.addColorStop(0, '#0d1a3a'); g.addColorStop(.7, '#3a4f86'); g.addColorStop(1, '#e6996a');
+    x.fillStyle = g; x.fillRect(x0, 0, pw, hy); x.fillStyle = '#0a0d14'; x.fillRect(x0, hy, pw, h - hy);
+    const sc = (hy - 20) / 16;   // px per degree; 16° of sky above the horizon
+    if (e) {
+      const sx = x0 + pw / 2, toX = az => sx + ((az - e.sun.az + 540) % 360 - 180) * sc;
+      const sunY = hy - e.sun.alt * sc;
+      if (e.V > -90) {
+        const mx = toX(e.moon.az), my = hy - e.moon.alt * sc, r = 13;
+        const frac = Math.max(.07, (1 - cos(e.arcl * D2R)) / 2);
+        x.save(); x.translate(mx, my); x.rotate(Math.atan2(sunY - my, sx - mx)); x.globalAlpha = Math.max(.35, Math.min(1, (e.V + 3) / 8));
+        const k = 1 - 2 * frac; x.fillStyle = '#fff6dc'; x.beginPath(); x.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false); x.ellipse(0, 0, Math.abs(k) * r, r, 0, Math.PI / 2, -Math.PI / 2, k > 0); x.fill(); x.restore();
+        x.fillStyle = '#E6E9F5'; x.font = `12px ${font}`; x.textAlign = 'center';
+        x.fillText(L.height + ' ' + e.moon.alt.toFixed(1).replace('.', ',') + '°', mx, my - 20);
+        x.fillStyle = ZONE_COL[Moon.zone(e.V)] === 'rgba(0,0,0,0)' ? '#9AA2C4' : ZONE_COL[Moon.zone(e.V)];
+        x.font = `600 13px ${font}`; x.fillText(L.zones[Moon.zone(e.V)], x0 + pw / 2, 40);
+      } else { x.fillStyle = '#9AA2C4'; x.font = `13px ${font}`; x.textAlign = 'center'; x.fillText(L.below, x0 + pw / 2, 40); }
+      x.fillStyle = 'rgba(255,200,120,.9)'; x.beginPath(); x.arc(sx, Math.min(h - 8, sunY), 5, 0, Math.PI * 2); x.fill();
+    }
+    x.fillStyle = '#fff'; x.font = `600 15px ${font}`; x.textAlign = 'center'; x.fillText(L.cities[id], x0 + pw / 2, 20);
+    x.fillStyle = '#9AA2C4'; x.font = `12px ${font}`; x.fillText(L.west, x0 + pw / 2, h - 12);
+    x.restore();
+  });
+}
+let hilalEv = 1, moonDay = 2, moonPlaying = false;
+function drawMoonSection() { const cv = $('moonOrbit'); cv.dataset.h = (cv.clientWidth || 600) < 640 ? 560 : 380; const { x, w, h } = prepCanvas(cv); drawMoonOrbit(x, w, h, moonDay); $('moonDayOut').textContent = moonDay.toFixed(1).replace('.', ','); }
+function drawHilal() {
+  const mc = $('hilalMap'), sc = $('hilalSky'), cw = mc.clientWidth || 600;
+  mc.dataset.h = Math.round(cw * 128 / 360) + (cw < 640 ? 78 : 34); sc.dataset.h = cw < 640 ? 560 : 250;
+  const a = prepCanvas(mc); drawHilalMap(a.x, a.w, a.h, hilalEv);
+  const b = prepCanvas(sc); drawHilalSky(b.x, b.w, b.h, hilalEv);
+}
+$('moonDay').addEventListener('input', e => { moonDay = +e.target.value; moonPlaying = false; $('moonPlay').textContent = '▶ Показать месяц'; drawMoonSection(); });
+$('moonPlay').addEventListener('click', () => { moonPlaying = !moonPlaying; if (moonPlaying && moonDay > 29.3) moonDay = 0; $('moonPlay').textContent = moonPlaying ? '❚❚ Пауза' : '▶ Показать месяц'; });
+document.querySelectorAll('[data-ev]').forEach(b => b.addEventListener('click', () => {
+  hilalEv = +b.dataset.ev; document.querySelectorAll('[data-ev]').forEach(o => o.classList.toggle('primary', o === b)); drawHilal();
+}));
+
 /* ================= Shadow (zuhr & asr) ================= */
 const SH = { T: 15, playing: false, dir: 1 };
 function shSetPlaying(p, dir = 1) {
@@ -3372,6 +3598,7 @@ function frame(now) {
     updateOrbit();
     yearAcc += dt; if (yearAcc > .3) { yearAcc = 0; onPlace(); }
   }
+  if (moonPlaying) { moonDay += dt * 3; if (moonDay >= 29.5) { moonDay = 29.5; moonPlaying = false; $('moonPlay').textContent = '▶ Показать месяц'; } $('moonDay').value = moonDay; drawMoonSection(); }
   if (SH.playing) {
     const r = shRange();
     if (!r) SH.playing = false;
@@ -3394,12 +3621,12 @@ function frame(now) {
 }
 
 function onTheme() {
-  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow();
+  readTokens(); drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); drawMoonSection(); drawHilal();
 }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
 new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); drawShadow(); }, 120); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); });
+let rsT; window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { drawRace(); drawYear(); drawDayChart(); updateLp(); drawShadow(); drawMoonSection(); drawHilal(); }, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawRace(); drawYear(); drawDayChart(); drawLpChart(); drawShadow(); drawMoonSection(); drawHilal(); });
 
 /* ================= Fullscreen ================= */
 const studio = document.querySelector('.studio');
@@ -3448,6 +3675,7 @@ document.addEventListener('keydown', e => {
 
 init3D();
 buildSteps();
+drawMoonSection(); drawHilal();
 if (S.lang !== 'ru') setLang(S.lang);
 goStep(0, true);
 requestAnimationFrame(frame);
@@ -3460,7 +3688,7 @@ window.twilightAPI = {
   place: () => { updatePanelStatic(); if (has3D) { rebuildSkyPath(); rebuildEarthRing(); } },
   time: () => { updateTime3D(); updatePanelTime(); },
   orbitOnly: () => updateOrbit(),
-  setLang, readTokens, drawRace, drawYear, updateLp,
+  setLang, readTokens, drawRace, drawYear, updateLp, drawMoonOrbit, drawHilalMap, drawHilalSky, Moon, MOON_TX,
   cam(mode, pos, target, fov) {
     tween = null; S.cam = mode; controls.enabled = false; setGround();
     if (fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
